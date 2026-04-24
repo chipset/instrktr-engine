@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Top bar -->
+  <rect x="28" y="22" width="44" height="10" rx="5" fill="#ffffff"/>
+  <!-- Stem -->
+  <rect x="44" y="32" width="12" height="36" fill="#ffffff"/>
+  <!-- Bottom bar -->
+  <rect x="28" y="68" width="44" height="10" rx="5" fill="#ffffff"/>
+  <!-- Accent dot -->
+  <circle cx="72" cy="73" r="6" fill="#ffffff"/>
+</svg>
