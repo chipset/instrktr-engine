@@ -211,9 +211,15 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('instrktr.startCourse', () => {
-      const testCourseDir = path.join(context.extensionPath, 'test-course');
-      startCourse(testCourseDir);
+    vscode.commands.registerCommand('instrktr.startCourse', async () => {
+      const uris = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: 'Open Course Folder',
+      });
+      if (!uris || uris.length === 0) { return; }
+      startCourse(uris[0].fsPath, true);
     }),
 
     vscode.commands.registerCommand('instrktr.openLocalCourse', async () => {

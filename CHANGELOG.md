@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.2] — 2026-04-24
+
+### Added
+- `instrktr.startupCourse` setting — auto-installs and starts a registry course by ID on activation
+- `instrktr.localCoursePath` setting — auto-starts a local course folder on activation (dev watch mode)
+- Stylized I-beam icon for marketplace and activity bar
+- Configuration reference docs at `docs/configuration.md`
+
+### Fixed
+- `CatalogProvider` nonce now uses `crypto.randomBytes` instead of `Math.random`
+- `instrktr.startCourse` command no longer hardcodes a missing `test-course/` directory — it now opens a folder picker (same as `openLocalCourse`)
+- `package.json` version bumped to match CHANGELOG
+
+---
+
 ## [0.3.1] — 2026-04-24
 
 ### Added
