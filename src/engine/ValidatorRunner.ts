@@ -6,6 +6,7 @@ import { CheckResult } from './types';
 import { buildContext, TerminalAPI } from '../context/ValidatorContext';
 
 const execFileAsync = promisify(execFile);
+const VALIDATOR_TIMEOUT_MS = 30_000;
 
 export class ValidatorRunner {
   constructor(private readonly _workspaceRoot: vscode.Uri) {}
@@ -13,37 +14,43 @@ export class ValidatorRunner {
   async run(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
     try {
-      // Cache-bust so reloading a course picks up changes
       delete require.cache[require.resolve(validatorPath)];
       fn = require(validatorPath);
     } catch (err) {
       return { status: 'fail', message: `Could not load validator: ${err}` };
     }
 
+    const timeout = new Promise<CheckResult>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Validator timed out after 30 seconds.')),
+        VALIDATOR_TIMEOUT_MS,
+      ),
+    );
+
     try {
       const ctx = buildContext(this._workspaceRoot, terminal);
-      return await fn(ctx);
+      return await Promise.race([fn(ctx), timeout]);
     } catch (err) {
-      return { status: 'fail', message: `Validator threw an error: ${err}` };
+      return { status: 'fail', message: String(err) };
     }
   }
 
   static buildTerminalAPI(workspaceRoot: vscode.Uri): TerminalAPI {
     const cwd = workspaceRoot.fsPath;
     return {
-      async lastCommand() { return ''; },       // filled in Session 6
-      async outputContains() { return false; }, // filled in Session 6
+      async lastCommand() { return ''; },
+      async outputContains() { return false; },
       async run(command) {
         try {
-          // Split on first space so we can pass args array (avoids shell injection)
           const [cmd, ...args] = command.split(/\s+/);
-          const { stdout } = await execFileAsync(cmd, args, { cwd });
-          return { stdout: stdout.trim(), exitCode: 0 };
+          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd, shell: true });
+          return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
-          const execErr = err as { stdout?: string; stderr?: string; code?: number };
+          const e = err as { stdout?: string; stderr?: string; code?: number };
           return {
-            stdout: (execErr.stdout ?? execErr.stderr ?? '').trim(),
-            exitCode: execErr.code ?? 1,
+            stdout: (e.stdout ?? '').trim(),
+            stderr: (e.stderr ?? '').trim(),
+            exitCode: e.code ?? 1,
           };
         }
       },

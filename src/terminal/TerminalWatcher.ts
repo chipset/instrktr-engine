@@ -59,13 +59,13 @@ export class TerminalWatcher implements vscode.Disposable {
 
       async run(command: string) {
         try {
-          const [cmd, ...args] = command.split(/\s+/);
-          const { stdout } = await execFileAsync(cmd, args, { cwd });
-          return { stdout: stdout.trim(), exitCode: 0 };
+          const { stdout, stderr } = await execFileAsync(command, [], { cwd, shell: true });
+          return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
           const e = err as { stdout?: string; stderr?: string; code?: number };
           return {
-            stdout: (e.stdout ?? e.stderr ?? '').trim(),
+            stdout: (e.stdout ?? '').trim(),
+            stderr: (e.stderr ?? '').trim(),
             exitCode: e.code ?? 1,
           };
         }

@@ -49,34 +49,54 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'checkWork': {
-          const result = await this._runner.check();
-          webviewView.webview.postMessage({ command: 'checkResult', result });
-          break;
-        }
-
-        case 'nextStep': {
-          const advanced = await this._runner.nextStep();
-          if (!advanced) {
-            vscode.window.showInformationMessage('Course complete! 🎉');
+          try {
+            const result = await this._runner.check();
+            webviewView.webview.postMessage({ command: 'checkResult', result });
+          } catch (err) {
+            webviewView.webview.postMessage({
+              command: 'checkResult',
+              result: { status: 'fail', message: `Unexpected error during check: ${err}` },
+            });
           }
           break;
         }
+
+        case 'nextStep':
+          await this._runner.nextStep();
+          break;
 
         case 'previousStep':
           await this._runner.previousStep();
           break;
 
-        case 'signIn':
-          await this._auth.signIn();
+        case 'jumpToStep':
+          await this._runner.jumpToStep(message.index);
           break;
+
+        case 'restartCourse':
+          await this._runner.restart();
+          break;
+
+        case 'signIn': {
+          const result = await this._auth.signIn();
+          if (!result.signedIn) {
+            webviewView.webview.postMessage({
+              command: 'setAuth',
+              auth: { ...this._auth.state, error: 'Sign-in was cancelled or failed.' },
+            });
+          }
+          break;
+        }
 
         case 'signOut':
           this._auth.signOut();
           break;
 
         case 'openFile': {
-          const uri = vscode.Uri.joinPath(this._runner.workspaceRoot, message.path);
-          vscode.commands.executeCommand('vscode.open', uri);
+          const root = this._runner.workspaceRoot.fsPath;
+          const resolved = require('path').resolve(root, message.path);
+          if (!resolved.startsWith(root)) { break; } // block path traversal
+          vscode.commands.executeCommand('vscode.open', vscode.Uri.file(resolved));
           break;
         }
 
@@ -128,8 +148,17 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div class="empty-state" id="empty-state">
-    <p>No course loaded.</p>
-    <p>Run <strong>Instrktr: Start Course</strong> from the Command Palette to begin.</p>
+    <p id="empty-message">No course loaded.</p>
+    <p id="empty-hint">Run <strong>Instrktr: Start Course</strong> from the Command Palette to begin.</p>
+    <p id="empty-error" class="load-error" hidden></p>
+  </div>
+
+  <div class="completion-screen" id="completion-screen" hidden>
+    <div class="completion-icon">🎉</div>
+    <h2 class="completion-heading">Course Complete!</h2>
+    <p class="completion-course" id="completion-title"></p>
+    <p class="completion-sub">You've finished every step.</p>
+    <button class="btn btn-ghost" id="restart-btn">Start Over</button>
   </div>
 
   <div class="panel" id="panel" hidden>
@@ -143,8 +172,12 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     <section class="instructions" id="instructions"></section>
 
     <section class="hints" id="hints-section" hidden>
+      <div class="hint-header">
+        <span class="hint-label">Hint</span>
+        <span class="hint-counter" id="hint-counter"></span>
+      </div>
       <div class="hint" id="hint-text"></div>
-      <button class="btn btn-ghost" id="next-hint-btn" hidden>Next Hint</button>
+      <button class="btn btn-ghost btn-sm" id="next-hint-btn" hidden>Next Hint →</button>
     </section>
 
     <div class="result" id="result" hidden>
@@ -191,10 +224,5 @@ async function listFilesRecursive(dir: vscode.Uri): Promise<vscode.Uri[]> {
 }
 
 function getNonce() {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
+  return require('crypto').randomBytes(16).toString('hex');
 }

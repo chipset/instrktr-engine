@@ -74,7 +74,10 @@ export async function activate(context: vscode.ExtensionContext) {
         );
       }
     } catch (err) {
-      vscode.window.showErrorMessage(`Failed to load course: ${String(err)}`);
+      const msg = String(err);
+      vscode.window.showErrorMessage(`Failed to load course: ${msg}`);
+      runner.fireLoadError(msg);
+      vscode.commands.executeCommand('instrktr.panel.focus');
     }
   }
 
@@ -160,6 +163,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     await downloader.uninstall(courseId, entry.version);
     await installed.remove(courseId);
+    await catalogProvider.refresh();
+    vscode.window.showInformationMessage(`${courseId} has been removed.`);
   }
 
   const catalogProvider = new CatalogProvider(

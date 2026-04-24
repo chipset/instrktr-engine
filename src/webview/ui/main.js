@@ -1,13 +1,17 @@
 const vscode = acquireVsCodeApi();
 
 const emptyState = document.getElementById('empty-state');
+const emptyError = document.getElementById('empty-error');
+const emptyHint = document.getElementById('empty-hint');
 const panel = document.getElementById('panel');
+const completionScreen = document.getElementById('completion-screen');
 const stepProgress = document.getElementById('step-progress');
 const courseTitle = document.getElementById('course-title');
 const stepTitle = document.getElementById('step-title');
 const instructions = document.getElementById('instructions');
 const hintsSection = document.getElementById('hints-section');
 const hintText = document.getElementById('hint-text');
+const hintCounter = document.getElementById('hint-counter');
 const nextHintBtn = document.getElementById('next-hint-btn');
 const resultEl = document.getElementById('result');
 const resultIcon = document.getElementById('result-icon');
@@ -20,6 +24,8 @@ const nextBtn = document.getElementById('next-btn');
 const prevBtn = document.getElementById('prev-btn');
 const hintBtn = document.getElementById('hint-btn');
 const compareBtn = document.getElementById('compare-btn');
+const completionTitle = document.getElementById('completion-title');
+const restartBtn = document.getElementById('restart-btn');
 
 let hints = [];
 let currentHint = -1;
@@ -27,23 +33,46 @@ let hasSolution = false;
 
 function applyState(state) {
   const loaded = state.loaded ?? false;
+
+  // Show completion screen when course is done
+  if (state.courseComplete) {
+    emptyState.hidden = true;
+    panel.hidden = true;
+    completionScreen.hidden = false;
+    completionTitle.textContent = state.courseTitle;
+    return;
+  }
+
+  completionScreen.hidden = true;
   emptyState.hidden = loaded;
   panel.hidden = !loaded;
-  if (!loaded) { return; }
+  if (!loaded) {
+    if (state.loadError) {
+      emptyError.textContent = `Error: ${state.loadError}`;
+      emptyError.hidden = false;
+      emptyHint.hidden = true;
+    } else {
+      emptyError.hidden = true;
+      emptyHint.hidden = false;
+    }
+    return;
+  }
 
   stepProgress.textContent = `Step ${state.stepIndex + 1} of ${state.totalSteps}`;
   courseTitle.textContent = state.courseTitle;
   stepTitle.textContent = state.title;
   instructions.innerHTML = state.instructionsHtml;
 
-  // Render step dots
+  // Render step dots — clickable
   stepDots.innerHTML = '';
   for (let i = 0; i < state.totalSteps; i++) {
-    const dot = document.createElement('div');
+    const dot = document.createElement('button');
     const done = (state.completedSteps ?? []).includes(i);
     const current = i === state.stepIndex;
     dot.className = 'step-dot' + (done ? ' done' : current ? ' current' : '');
-    dot.title = `Step ${i + 1}`;
+    dot.title = `Jump to step ${i + 1}`;
+    dot.dataset.stepIndex = String(i);
+    dot.setAttribute('aria-label', `Step ${i + 1}`);
     stepDots.appendChild(dot);
   }
 
@@ -54,10 +83,15 @@ function applyState(state) {
   hasSolution = state.hasSolution ?? false;
 
   prevBtn.hidden = state.stepIndex === 0;
+
+  // Clear result on every state change (step navigation)
   resultEl.hidden = true;
-  checkBtn.hidden = false;
-  nextBtn.hidden = true;
+  resultEl.className = 'result';
   compareBtn.hidden = true;
+  checkBtn.hidden = false;
+  checkBtn.disabled = false;
+  checkBtn.textContent = 'Check My Work';
+  nextBtn.hidden = true;
 
   if (state.result) {
     showResult(state.result);
@@ -91,6 +125,13 @@ instructions.addEventListener('click', (e) => {
   vscode.postMessage({ command: 'openFile', path: filePath });
 });
 
+// Step dot click-to-jump
+stepDots.addEventListener('click', (e) => {
+  const dot = e.target.closest('.step-dot[data-step-index]');
+  if (!dot) { return; }
+  vscode.postMessage({ command: 'jumpToStep', index: parseInt(dot.dataset.stepIndex, 10) });
+});
+
 checkBtn.addEventListener('click', () => {
   checkBtn.disabled = true;
   checkBtn.textContent = 'Checking…';
@@ -98,16 +139,10 @@ checkBtn.addEventListener('click', () => {
 });
 
 nextBtn.addEventListener('click', () => {
-  resultEl.hidden = true;
-  nextBtn.hidden = true;
-  checkBtn.hidden = false;
   vscode.postMessage({ command: 'nextStep' });
 });
 
 prevBtn.addEventListener('click', () => {
-  resultEl.hidden = true;
-  nextBtn.hidden = true;
-  checkBtn.hidden = false;
   vscode.postMessage({ command: 'previousStep' });
 });
 
@@ -116,6 +151,7 @@ hintBtn.addEventListener('click', () => {
   hintText.textContent = hints[currentHint];
   hintsSection.hidden = false;
   nextHintBtn.hidden = currentHint >= hints.length - 1;
+  hintCounter.textContent = `${currentHint + 1} / ${hints.length}`;
   hintBtn.hidden = true;
 });
 
@@ -123,6 +159,15 @@ nextHintBtn.addEventListener('click', () => {
   currentHint = Math.min(currentHint + 1, hints.length - 1);
   hintText.textContent = hints[currentHint];
   nextHintBtn.hidden = currentHint >= hints.length - 1;
+  hintCounter.textContent = `${currentHint + 1} / ${hints.length}`;
+});
+
+compareBtn.addEventListener('click', () => {
+  vscode.postMessage({ command: 'openSolution' });
+});
+
+restartBtn.addEventListener('click', () => {
+  vscode.postMessage({ command: 'restartCourse' });
 });
 
 window.addEventListener('message', (event) => {
@@ -135,15 +180,12 @@ window.addEventListener('message', (event) => {
       applyAuth(msg.auth);
       break;
     case 'checkResult':
+      // Always re-enable the button regardless of outcome
       checkBtn.disabled = false;
       checkBtn.textContent = 'Check My Work';
       showResult(msg.result);
       break;
   }
-});
-
-compareBtn.addEventListener('click', () => {
-  vscode.postMessage({ command: 'openSolution' });
 });
 
 authBtn.addEventListener('click', () => {
@@ -155,10 +197,14 @@ function applyAuth(auth) {
     authLabel.textContent = `Signed in as ${auth.username}`;
     authBtn.textContent = 'Sign out';
     authBtn.dataset.action = 'signOut';
+    authBtn.title = '';
   } else {
     authLabel.textContent = 'Sign in to sync progress';
     authBtn.textContent = 'Sign in';
     authBtn.dataset.action = 'signIn';
+    if (auth.error) {
+      authLabel.textContent = `Sign-in failed: ${auth.error}`;
+    }
   }
 }
 

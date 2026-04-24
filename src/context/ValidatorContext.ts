@@ -5,7 +5,7 @@ import { CheckResult } from '../engine/types';
 export interface TerminalAPI {
   lastCommand(): Promise<string>;
   outputContains(text: string): Promise<boolean>;
-  run(command: string): Promise<{ stdout: string; exitCode: number }>;
+  run(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }>;
 }
 
 export interface ValidatorContext {
@@ -13,8 +13,12 @@ export interface ValidatorContext {
     exists(filePath: string): Promise<boolean>;
     read(filePath: string): Promise<string>;
     matches(filePath: string, pattern: RegExp): Promise<boolean>;
+    list(dirPath: string): Promise<string[]>;
   };
   terminal: TerminalAPI;
+  env: {
+    get(name: string): string | undefined;
+  };
   workspace: {
     getConfig(key: string): Promise<string>;
   };
@@ -27,7 +31,14 @@ export function buildContext(
   workspaceRoot: vscode.Uri,
   terminal: TerminalAPI,
 ): ValidatorContext {
-  const resolve = (p: string) => vscode.Uri.joinPath(workspaceRoot, p);
+  const resolve = (p: string) => {
+    // Prevent path traversal outside workspace root
+    const resolved = path.resolve(workspaceRoot.fsPath, p);
+    if (!resolved.startsWith(workspaceRoot.fsPath)) {
+      throw new Error(`Path "${p}" escapes the workspace root.`);
+    }
+    return vscode.Uri.file(resolved);
+  };
 
   return {
     files: {
@@ -51,8 +62,21 @@ export function buildContext(
           return false;
         }
       },
+      async list(dirPath) {
+        try {
+          const entries = await vscode.workspace.fs.readDirectory(resolve(dirPath));
+          return entries.map(([name]) => name);
+        } catch {
+          return [];
+        }
+      },
     },
     terminal,
+    env: {
+      get(name) {
+        return process.env[name];
+      },
+    },
     workspace: {
       async getConfig(key) {
         return vscode.workspace.getConfiguration('instrktr').get<string>(key) ?? '';

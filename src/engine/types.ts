@@ -49,6 +49,8 @@ export interface CheckResult {
 
 export interface StepState {
   loaded: boolean;
+  courseComplete?: boolean;
+  loadError?: string;
   courseTitle: string;
   stepIndex: number;
   totalSteps: number;

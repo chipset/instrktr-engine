@@ -44,6 +44,28 @@ Returns `true` if the file contents match the given RegExp. Returns `false` if t
 const ok = await context.files.matches('README.md', /## Installation/);
 ```
 
+### `files.list(dirPath)`
+Returns an array of filenames (not full paths) inside a directory relative to the workspace root. Returns an empty array if the directory doesn't exist.
+
+```js
+const entries = await context.files.list('src');
+if (!entries.includes('index.js')) {
+  return context.fail('Create src/index.js first.');
+}
+```
+
+## `context.env`
+
+### `env.get(name)`
+Returns the value of an environment variable, or `undefined` if it isn't set.
+
+```js
+const apiKey = context.env.get('ZOWE_OPT_PASSWORD');
+if (!apiKey) {
+  return context.fail('ZOWE_OPT_PASSWORD is not set.');
+}
+```
+
 ## `context.terminal`
 
 ### `terminal.lastCommand()`
@@ -64,14 +86,16 @@ const passed = await context.terminal.outputContains('initialized empty');
 ```
 
 ### `terminal.run(command)`
-Runs a command in the workspace and returns its output. Use this for validation checks (e.g. `git log`, `npm test`). Do not use for long-running processes.
+Runs a command in the workspace and returns its output. Use this for validation checks (e.g. `git log`, `npm test`). Do not use for long-running processes. Times out after 30 seconds.
 
 ```js
-const { stdout, exitCode } = await context.terminal.run('git log --oneline -1');
+const { stdout, stderr, exitCode } = await context.terminal.run('git log --oneline -1');
 if (exitCode !== 0) {
   return context.fail('No commits found yet.');
 }
 ```
+
+`stderr` contains any error output from the command. Both `stdout` and `stderr` are strings.
 
 ## `context.workspace`
 

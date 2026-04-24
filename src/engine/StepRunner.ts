@@ -14,6 +14,7 @@ export class StepRunner {
   private _courseDir?: string;
   private _stepIndex = 0;
   private _completedSteps: number[] = [];
+  private _navigating = false;
   private _scaffolder: FileScaffolder;
   private _fileWatcher = new FileWatcher();
   private _courseWatcher?: vscode.FileSystemWatcher;
@@ -37,6 +38,21 @@ export class StepRunner {
 
   setTerminalAPI(api: TerminalAPI) {
     this._terminal = api;
+  }
+
+  fireLoadError(message: string) {
+    this._onStateChange.fire({
+      loaded: false,
+      loadError: message,
+      courseTitle: '',
+      stepIndex: 0,
+      totalSteps: 0,
+      completedSteps: [],
+      title: '',
+      instructionsHtml: '',
+      hints: [],
+      hasSolution: false,
+    });
   }
 
   async loadCourse(courseDir: string, devMode = false): Promise<void> {
@@ -96,28 +112,58 @@ export class StepRunner {
   }
 
   async nextStep(): Promise<boolean> {
-    if (!this._course) { return false; }
-    if (this._stepIndex >= this._course.steps.length - 1) { return false; }
-    this._stepIndex++;
-    await this._progress.setCurrentStep(this._course.id, this._stepIndex);
-    await this._enterStep();
+    if (!this._course || this._navigating) { return false; }
+    if (this._stepIndex >= this._course.steps.length - 1) {
+      // Fire completion state
+      this._onStateChange.fire({
+        loaded: true,
+        courseComplete: true,
+        courseTitle: this._course.title,
+        stepIndex: this._stepIndex,
+        totalSteps: this._course.steps.length,
+        completedSteps: [...this._completedSteps],
+        title: '',
+        instructionsHtml: '',
+        hints: [],
+        hasSolution: false,
+      });
+      return false;
+    }
+    this._navigating = true;
+    try {
+      this._stepIndex++;
+      await this._progress.setCurrentStep(this._course.id, this._stepIndex);
+      await this._enterStep();
+    } finally {
+      this._navigating = false;
+    }
     return true;
   }
 
   async previousStep(): Promise<boolean> {
-    if (this._stepIndex === 0) { return false; }
-    this._stepIndex--;
-    await this._progress.setCurrentStep(this._course.id, this._stepIndex);
-    await this._enterStep();
+    if (this._stepIndex === 0 || this._navigating) { return false; }
+    this._navigating = true;
+    try {
+      this._stepIndex--;
+      await this._progress.setCurrentStep(this._course.id, this._stepIndex);
+      await this._enterStep();
+    } finally {
+      this._navigating = false;
+    }
     return true;
   }
 
   async jumpToStep(index: number): Promise<boolean> {
-    if (!this._course) { return false; }
+    if (!this._course || this._navigating) { return false; }
     if (index < 0 || index >= this._course.steps.length) { return false; }
-    this._stepIndex = index;
-    await this._progress.setCurrentStep(this._course.id, this._stepIndex);
-    await this._enterStep();
+    this._navigating = true;
+    try {
+      this._stepIndex = index;
+      await this._progress.setCurrentStep(this._course.id, this._stepIndex);
+      await this._enterStep();
+    } finally {
+      this._navigating = false;
+    }
     return true;
   }
 
