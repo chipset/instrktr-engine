@@ -102,6 +102,16 @@
           "type": "string",
           "default": "",
           "description": "URL to the course registry.json"
+        },
+        "instrktr.startupCourse": {
+          "type": "string",
+          "default": "",
+          "description": "Course ID from the registry to automatically install and start when VS Code opens (e.g. \"git-basics\")."
+        },
+        "instrktr.localCoursePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to a local course folder to automatically start when VS Code opens. Takes precedence over instrktr.startupCourse."
         }
       }
     }

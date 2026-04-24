@@ -183,6 +183,33 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(PanelProvider.viewId, panelProvider),
   );
 
+  // Auto-start from settings
+  const cfg = vscode.workspace.getConfiguration('instrktr');
+  const localPath = cfg.get<string>('localCoursePath', '').trim();
+  const startupCourseId = cfg.get<string>('startupCourse', '').trim();
+  if (localPath) {
+    startCourse(localPath, true);
+  } else if (startupCourseId) {
+    installed.load().then(async () => {
+      const entry = installed.get(startupCourseId);
+      if (entry) {
+        startCourse(entry.courseDir);
+      } else {
+        try {
+          const reg = await registry.fetch();
+          const remote = reg.courses.find((c) => c.id === startupCourseId);
+          if (remote) {
+            await installCourse(remote);
+          } else {
+            vscode.window.showWarningMessage(`Instrktr: startup course "${startupCourseId}" not found in registry.`);
+          }
+        } catch (err) {
+          vscode.window.showWarningMessage(`Instrktr: could not fetch registry to start "${startupCourseId}": ${err}`);
+        }
+      }
+    });
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('instrktr.startCourse', () => {
       const testCourseDir = path.join(context.extensionPath, 'test-course');
