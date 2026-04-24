@@ -98,6 +98,16 @@ Creates a complete course skeleton with a GitHub Actions release workflow.
 
 Sign in with GitHub (**Instrktr: Sign in with GitHub**) to sync your progress across machines via a private GitHub Gist. Your data is stored in your own account — the extension never sends it anywhere else.
 
+## Configuration
+
+| Setting | Description |
+|---|---|
+| `instrktr.registryUrl` | URL to a `registry.json` file that populates the course catalog |
+| `instrktr.startupCourse` | Course ID to auto-install and start on VS Code open |
+| `instrktr.localCoursePath` | Absolute path to a local course folder (opens in dev watch mode) |
+
+See the [Configuration Reference](docs/configuration.md) for full details, scope rules, workshop setup, and monorepo patterns.
+
 ## Commands
 
 | Command | Description |
