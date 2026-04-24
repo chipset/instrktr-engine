@@ -48,7 +48,7 @@ course-my-topic/
 | `id` | ✓ | Unique slug, used for progress tracking and migration |
 | `title` | ✓ | Shown in the panel header |
 | `instructions` | ✓ | Path to a Markdown file |
-| `validator` | | Path to a `validate.js` file. If omitted, step auto-passes |
+| `validator` | | Path to a `validate.js` or `validate.sh` file. If omitted, step auto-passes |
 | `starter` | | Path to a folder whose contents are copied into the workspace when the step begins |
 | `solution` | | Path to a folder with reference files. Shown as a diff when a check fails or warns |
 
@@ -94,7 +94,7 @@ Solution files are included in the downloaded course package but are not surface
 
 ## Writing Validators
 
-See [validator-api.md](./validator-api.md) for the full `context` API.
+Validators can be JavaScript (`validate.js`) or Bash (`validate.sh`). See [validator-api.md](./validator-api.md) for full details on both.
 
 ### Tips
 

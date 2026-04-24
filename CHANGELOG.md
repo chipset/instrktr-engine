@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.5] — 2026-04-24
+
+### Added
+- Bash validator support (`validate.sh`) — runs from the course directory so learners cannot tamper with the script
+- `INSTRKTR_WORKSPACE` and `INSTRKTR_STEP` env vars injected into bash validators
+- Exit code convention: `0` = pass, `1` = fail, `2` = warn; stdout becomes the panel message
+- Docs updated: validator-api.md and course-authoring.md cover bash validators
+
+---
+
 ## [0.3.4] — 2026-04-24
 
 ### Fixed

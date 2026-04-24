@@ -2,7 +2,7 @@
   "name": "instrktr",
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "publisher": "instrktr",
   "icon": "media/icon.png",
   "galleryBanner": {

@@ -11,7 +11,52 @@ const VALIDATOR_TIMEOUT_MS = 30_000;
 export class ValidatorRunner {
   constructor(private readonly _workspaceRoot: vscode.Uri) {}
 
-  async run(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
+  async run(validatorPath: string, terminal: TerminalAPI, stepIndex?: number): Promise<CheckResult> {
+    if (validatorPath.endsWith('.sh')) {
+      return this._runBash(validatorPath, stepIndex ?? 0);
+    }
+    return this._runJs(validatorPath, terminal);
+  }
+
+  private async _runBash(validatorPath: string, stepIndex: number): Promise<CheckResult> {
+    const courseDir = path.dirname(path.dirname(validatorPath)); // step dir → course dir
+    const workspace = this._workspaceRoot.fsPath;
+
+    const timeout = new Promise<CheckResult>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Validator timed out after 30 seconds.')),
+        VALIDATOR_TIMEOUT_MS,
+      ),
+    );
+
+    const run = new Promise<CheckResult>(async (resolve) => {
+      try {
+        const { stdout } = await execFileAsync('bash', [validatorPath], {
+          cwd: courseDir,
+          env: {
+            ...process.env,
+            INSTRKTR_WORKSPACE: workspace,
+            INSTRKTR_STEP: String(stepIndex),
+          },
+        });
+        resolve({ status: 'pass', message: stdout.trim() || 'Step complete!' });
+      } catch (err: unknown) {
+        const e = err as { stdout?: string; stderr?: string; code?: number };
+        const message = (e.stdout ?? e.stderr ?? String(err)).trim() || 'Check failed.';
+        const exitCode = e.code ?? 1;
+        const status = exitCode === 2 ? 'warn' : 'fail';
+        resolve({ status, message });
+      }
+    });
+
+    try {
+      return await Promise.race([run, timeout]);
+    } catch (err) {
+      return { status: 'fail', message: String(err) };
+    }
+  }
+
+  private async _runJs(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
     try {
       delete require.cache[require.resolve(validatorPath)];

@@ -1,5 +1,56 @@
 # Validator API Reference
 
+Validators can be written in **JavaScript** (`validate.js`) or **Bash** (`validate.sh`). Point to whichever you prefer in the `validator` field of `course.json`.
+
+---
+
+## Bash validators
+
+Bash validators run from the **course directory** (not the workspace), so learners cannot tamper with the script. The learner's workspace is available via the `INSTRKTR_WORKSPACE` environment variable.
+
+### Exit codes
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Pass — shows Next Step button |
+| `1` | Fail — learner should try again |
+| `2` | Warn — partially correct, lets learner proceed |
+
+### Environment variables
+
+| Variable | Value |
+|---|---|
+| `INSTRKTR_WORKSPACE` | Absolute path to the learner's workspace root |
+| `INSTRKTR_STEP` | Current step index (0-based) |
+
+### stdout
+
+Whatever is printed to stdout becomes the message shown in the panel.
+
+### Example
+
+```bash
+#!/bin/bash
+# steps/01-init-repo/validate.sh
+
+if [ ! -d "$INSTRKTR_WORKSPACE/.git" ]; then
+  echo "No .git directory found. Run: git init"
+  exit 1
+fi
+
+if ! grep -q "Initial commit" "$(git -C "$INSTRKTR_WORKSPACE" log --oneline 2>/dev/null)"; then
+  echo "Repository initialized but no commits yet. Stage and commit your files."
+  exit 2
+fi
+
+echo "Git repository initialized and first commit made."
+exit 0
+```
+
+---
+
+## JavaScript validators
+
 Every step's `validate.js` exports a single async function that receives a `context` object.
 
 ## Signature

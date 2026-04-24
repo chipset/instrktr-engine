@@ -103,7 +103,7 @@ export class StepRunner {
       return { status: 'pass', message: 'Step complete!' };
     }
     const validatorPath = path.join(this._courseDir, step.validator);
-    const result = await this._validatorRunner.run(validatorPath, this._terminal);
+    const result = await this._validatorRunner.run(validatorPath, this._terminal, this._stepIndex);
 
     if (result.status === 'pass') {
       await this._progress.markStepComplete(this._course.id, this._stepIndex);
