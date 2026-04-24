@@ -47,7 +47,7 @@ const ok = await context.files.matches('README.md', /## Installation/);
 ## `context.terminal`
 
 ### `terminal.lastCommand()`
-Returns the last command the learner ran in the Instruqt terminal.
+Returns the last command the learner ran in the Instrktr terminal.
 
 ```js
 const cmd = await context.terminal.lastCommand();
@@ -76,7 +76,7 @@ if (exitCode !== 0) {
 ## `context.workspace`
 
 ### `workspace.getConfig(key)`
-Reads a VS Code setting from the `instruqt-engine` namespace.
+Reads a VS Code setting from the `instrktr` namespace.
 
 ```js
 const url = await context.workspace.getConfig('registryUrl');

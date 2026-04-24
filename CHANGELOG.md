@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.1] — 2026-04-24
+
+### Added
+- `open:` link syntax in instructions — `[Open \`file.py\`](open:file.py)` renders as a file chip that opens the file in the editor
+- Solution folder support — add a `solution/` folder to any step and reference it via `"solution"` in `course.json`
+- **↕ Compare with Solution** button appears in the result panel after a fail or warn, opening VS Code's diff editor for each solution file
+- Course Authoring Guide at `docs/course-authoring.md`
+
+---
+
 ## [0.3.0] — 2026-04-23
 
 ### Added

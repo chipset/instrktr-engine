@@ -10,6 +10,8 @@ The Instrktr is a runtime that loads interactive courses into your editor. Each 
 - **Validators** that check your work against the real state of the workspace
 - **Starter files** scaffolded automatically when a step begins
 - **Hints** available on demand
+- **Open-file links** that jump straight to the file you need to edit
+- **Compare with Solution** diff view shown when a check fails
 
 Your progress is saved locally and synced across devices via GitHub Gist (optional, requires sign-in).
 
@@ -42,13 +44,32 @@ course-my-topic/
 └── steps/
     ├── 01-first-step/
     │   ├── instructions.md
-    │   ├── starter/        ← files copied into workspace
+    │   ├── starter/        ← files copied into workspace on step entry
+    │   ├── solution/       ← shown as diff when a check fails (optional)
     │   └── validate.js     ← checks learner's work
     └── 02-second-step/
         └── ...
 ```
 
-Validators receive a `context` object:
+### Open-file links
+
+In any `instructions.md`, use `open:` links to give learners a one-click shortcut to the file they need to edit:
+
+```markdown
+Add the function to [Open `src/index.js`](open:src/index.js).
+```
+
+### Solution folders
+
+Add a `solution/` folder to a step (mirroring the workspace structure) and reference it in `course.json`:
+
+```json
+{ "solution": "steps/01-first-step/solution" }
+```
+
+When a check fails or warns, a **↕ Compare with Solution** button appears. Clicking it opens VS Code's diff editor — learner's file on the left, solution on the right.
+
+### Validators
 
 ```js
 module.exports = async function validate(context) {
@@ -63,7 +84,7 @@ module.exports = async function validate(context) {
 };
 ```
 
-See the [Validator API reference](docs/validator-api.md) for the full API.
+See the [Validator API reference](docs/validator-api.md) and [Course Authoring Guide](docs/course-authoring.md) for full details.
 
 ## Scaffold a new course
 
