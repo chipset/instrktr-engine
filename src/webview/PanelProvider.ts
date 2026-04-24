@@ -79,6 +79,24 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           vscode.commands.executeCommand('vscode.open', uri);
           break;
         }
+
+        case 'openSolution': {
+          const solutionDir = this._runner.currentStepSolutionDir();
+          if (!solutionDir) { break; }
+          const files = await listFilesRecursive(vscode.Uri.file(solutionDir));
+          const solutionBase = vscode.Uri.file(solutionDir);
+          for (const fileUri of files) {
+            const rel = fileUri.path.slice(solutionBase.path.length + 1);
+            const workspaceUri = vscode.Uri.joinPath(this._runner.workspaceRoot, rel);
+            await vscode.commands.executeCommand(
+              'vscode.diff',
+              workspaceUri,
+              fileUri,
+              `${rel}  (Your file ↔ Solution)`,
+            );
+          }
+          break;
+        }
       }
     });
   }
@@ -130,8 +148,11 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     </section>
 
     <div class="result" id="result" hidden>
-      <span class="result-icon" id="result-icon"></span>
-      <span class="result-message" id="result-message"></span>
+      <div class="result-body">
+        <span class="result-icon" id="result-icon"></span>
+        <span class="result-message" id="result-message"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="compare-btn" hidden>↕ Compare with Solution</button>
     </div>
 
     <footer class="actions">
@@ -151,6 +172,22 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 </body>
 </html>`;
   }
+}
+
+async function listFilesRecursive(dir: vscode.Uri): Promise<vscode.Uri[]> {
+  const results: vscode.Uri[] = [];
+  try {
+    const entries = await vscode.workspace.fs.readDirectory(dir);
+    for (const [name, type] of entries) {
+      const child = vscode.Uri.joinPath(dir, name);
+      if (type === vscode.FileType.Directory) {
+        results.push(...await listFilesRecursive(child));
+      } else if (type === vscode.FileType.File) {
+        results.push(child);
+      }
+    }
+  } catch { /* directory may not exist */ }
+  return results;
 }
 
 function getNonce() {

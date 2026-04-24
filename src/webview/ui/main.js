@@ -19,9 +19,11 @@ const checkBtn = document.getElementById('check-btn');
 const nextBtn = document.getElementById('next-btn');
 const prevBtn = document.getElementById('prev-btn');
 const hintBtn = document.getElementById('hint-btn');
+const compareBtn = document.getElementById('compare-btn');
 
 let hints = [];
 let currentHint = -1;
+let hasSolution = false;
 
 function applyState(state) {
   const loaded = state.loaded ?? false;
@@ -49,11 +51,13 @@ function applyState(state) {
   currentHint = -1;
   hintsSection.hidden = true;
   hintBtn.hidden = hints.length === 0;
+  hasSolution = state.hasSolution ?? false;
 
   prevBtn.hidden = state.stepIndex === 0;
   resultEl.hidden = true;
   checkBtn.hidden = false;
   nextBtn.hidden = true;
+  compareBtn.hidden = true;
 
   if (state.result) {
     showResult(state.result);
@@ -70,9 +74,11 @@ function showResult(result) {
   if (result.status === 'pass') {
     checkBtn.hidden = true;
     nextBtn.hidden = false;
+    compareBtn.hidden = true;
   } else {
     checkBtn.hidden = false;
     nextBtn.hidden = true;
+    compareBtn.hidden = !hasSolution;
   }
 }
 
@@ -134,6 +140,10 @@ window.addEventListener('message', (event) => {
       showResult(msg.result);
       break;
   }
+});
+
+compareBtn.addEventListener('click', () => {
+  vscode.postMessage({ command: 'openSolution' });
 });
 
 authBtn.addEventListener('click', () => {

@@ -134,6 +134,12 @@ export class StepRunner {
   get fileWatcher(): FileWatcher { return this._fileWatcher; }
   get workspaceRoot(): vscode.Uri { return this._workspaceRoot; }
 
+  currentStepSolutionDir(): string | undefined {
+    const step = this._currentStep();
+    if (!step?.solution || !this._courseDir) { return undefined; }
+    return path.join(this._courseDir, step.solution);
+  }
+
   dispose() {
     this._fileWatcher.dispose();
     this._courseWatcher?.dispose();
@@ -167,6 +173,14 @@ export class StepRunner {
     }
     const instructionsHtml = await marked(md);
 
+    let hasSolution = false;
+    if (step.solution) {
+      try {
+        await fs.access(path.join(this._courseDir, step.solution));
+        hasSolution = true;
+      } catch { /* solution dir is optional */ }
+    }
+
     this._onStateChange.fire({
       loaded: true,
       courseTitle: this._course!.title,
@@ -176,6 +190,7 @@ export class StepRunner {
       title: step.title,
       instructionsHtml,
       hints: step.hints ?? [],
+      hasSolution,
     });
   }
 }

@@ -23,6 +23,7 @@ export interface StepDef {
   hints: string[];
   validator?: string;   // path to validate.js
   starter?: string;     // path to starter folder
+  solution?: string;    // path to solution folder (hidden from learner, shown on fail/warn)
 }
 
 export interface CourseDef {
@@ -55,5 +56,6 @@ export interface StepState {
   title: string;
   instructionsHtml: string;
   hints: string[];
+  hasSolution: boolean;
   result?: CheckResult;
 }

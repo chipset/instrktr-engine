@@ -177,12 +177,18 @@ body {
 /* Result */
 .result {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.result-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .result.pass {
