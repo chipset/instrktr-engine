@@ -69,9 +69,14 @@ Add a `solution/` folder to a step (mirroring the workspace structure) and refer
 
 When a check fails or warns, a **↕ Compare with Solution** button appears. Clicking it opens VS Code's diff editor — learner's file on the left, solution on the right.
 
-### Validators
+### Validators — JavaScript or Bash
+
+Write validators in JavaScript or Bash — whichever fits your course:
+
+**JavaScript** — best for structured checks, JSON parsing, regex, async logic:
 
 ```js
+// validate.js
 module.exports = async function validate(context) {
   if (!await context.files.exists('src/index.js')) {
     return context.fail('Create src/index.js first.');
@@ -84,7 +89,29 @@ module.exports = async function validate(context) {
 };
 ```
 
-See the [Validator API reference](docs/validator-api.md) and [Course Authoring Guide](docs/course-authoring.md) for full details.
+**Bash** — best for shell-native checks (git, CLI tools, file system). Runs from the course directory so learners can't tamper with it. The workspace is always available as `$INSTRKTR_WORKSPACE`:
+
+```bash
+#!/bin/bash
+# validate.sh
+cd "$INSTRKTR_WORKSPACE" || exit 1
+
+if [ ! -d ".git" ]; then
+  echo "No .git directory found. Run: git init"
+  exit 1   # fail
+fi
+
+COMMITS=$(git log --oneline 2>/dev/null | wc -l | tr -d ' ')
+if [ "$COMMITS" -eq 0 ]; then
+  echo "Repository created but no commits yet."
+  exit 2   # warn — learner can proceed
+fi
+
+echo "Git repository ready with ${COMMITS} commit(s)."
+exit 0   # pass
+```
+
+See the [Validator API reference](docs/validator-api.md) and [Course Authoring Guide](docs/course-authoring.md) for full details and patterns.
 
 ## Scaffold a new course
 
