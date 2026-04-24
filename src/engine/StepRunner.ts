@@ -68,7 +68,12 @@ export class StepRunner {
       let debounce: ReturnType<typeof setTimeout> | undefined;
       const reload = () => {
         if (debounce) { clearTimeout(debounce); }
-        debounce = setTimeout(() => this._enterStep(), 500);
+        debounce = setTimeout(async () => {
+          try {
+            this._course = await this._loader.load(courseDir);
+          } catch { /* keep existing course if manifest is temporarily invalid */ }
+          await this._enterStep();
+        }, 500);
       };
       this._courseWatcher.onDidChange(reload);
       this._courseWatcher.onDidCreate(reload);

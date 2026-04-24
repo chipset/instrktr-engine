@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.3] — 2026-04-24
+
+### Fixed
+- `instrktr.checkWork` command now registered in extension host — was listed in package.json but unreachable from command palette
+- Dev mode course watcher now reloads `course.json` on file change, not just the current step — adding/renaming steps is reflected immediately
+- Removed duplicate `instrktr.startCourse` command (was identical to `openLocalCourse` after previous fix)
+
+### Added
+- Keybindings: `Cmd+Shift+Enter` (Check My Work), `Cmd+Shift+]` (Next Step), `Cmd+Shift+[` (Prev Step) — only active when a course is loaded
+- `instrktr.courseLoaded` context key set via `setContext` so keybindings don't interfere with other extensions
+
+---
+
 ## [0.3.2] — 2026-04-24
 
 ### Added

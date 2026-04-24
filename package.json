@@ -2,7 +2,7 @@
   "name": "instrktr",
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "publisher": "instrktr",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -31,10 +31,6 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "instrktr.startCourse",
-        "title": "Instrktr: Open Local Course Folder (Quick)"
-      },
       {
         "command": "instrktr.checkWork",
         "title": "Instrktr: Check My Work"
@@ -95,6 +91,26 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "instrktr.checkWork",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "instrktr.courseLoaded"
+      },
+      {
+        "command": "instrktr.nextStep",
+        "key": "ctrl+shift+]",
+        "mac": "cmd+shift+]",
+        "when": "instrktr.courseLoaded"
+      },
+      {
+        "command": "instrktr.previousStep",
+        "key": "ctrl+shift+[",
+        "mac": "cmd+shift+[",
+        "when": "instrktr.courseLoaded"
+      }
+    ],
     "configuration": {
       "title": "Instrktr",
       "properties": {

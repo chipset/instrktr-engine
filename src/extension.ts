@@ -52,6 +52,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(statusBar);
 
   runner.onStateChange((state) => {
+    const active = state.loaded && !state.courseComplete;
+    vscode.commands.executeCommand('setContext', 'instrktr.courseLoaded', active);
+    if (!state.loaded) { return; }
     statusBar.text = `$(book) ${state.courseTitle} — Step ${state.stepIndex + 1}/${state.totalSteps}`;
     statusBar.tooltip = state.title;
     statusBar.show();
@@ -211,7 +214,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('instrktr.startCourse', async () => {
+    vscode.commands.registerCommand('instrktr.openLocalCourse', async () => {
       const uris = await vscode.window.showOpenDialog({
         canSelectFiles: false,
         canSelectFolders: true,
@@ -222,15 +225,22 @@ export async function activate(context: vscode.ExtensionContext) {
       startCourse(uris[0].fsPath, true);
     }),
 
-    vscode.commands.registerCommand('instrktr.openLocalCourse', async () => {
-      const uris = await vscode.window.showOpenDialog({
-        canSelectFiles: false,
-        canSelectFolders: true,
-        canSelectMany: false,
-        openLabel: 'Open Course Folder',
-      });
-      if (!uris || uris.length === 0) { return; }
-      startCourse(uris[0].fsPath, true); // dev mode on for local courses
+    vscode.commands.registerCommand('instrktr.checkWork', async () => {
+      try {
+        const result = await runner.check();
+        // The panel handles its own checkResult display via postMessage in PanelProvider.
+        // This command path posts directly so keyboard shortcut invocations show the result.
+        vscode.commands.executeCommand('instrktr.panel.focus');
+        if (result.status === 'fail') {
+          vscode.window.showErrorMessage(`Check failed: ${result.message}`);
+        } else if (result.status === 'warn') {
+          vscode.window.showWarningMessage(`Check warning: ${result.message}`);
+        } else {
+          vscode.window.showInformationMessage(`✓ ${result.message}`);
+        }
+      } catch (err) {
+        vscode.window.showErrorMessage(`Check error: ${err}`);
+      }
     }),
 
     vscode.commands.registerCommand('instrktr.browseCourses', () => {
