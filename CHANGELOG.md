@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.4] — 2026-04-24
+
+### Fixed
+- `engineVersion` check now does proper semver comparison against the actual extension version — `>=0.3.0` is correctly enforced instead of being silently ignored
+- FileScaffolder toast summarises skipped files (shows first 3 + count) instead of listing every filename
+
+### Added
+- `Instrktr: Jump to Step…` command in the command palette — opens a Quick Pick list of all steps
+
+---
+
 ## [0.3.3] — 2026-04-24
 
 ### Fixed

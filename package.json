@@ -2,7 +2,7 @@
   "name": "instrktr",
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "instrktr",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -42,6 +42,10 @@
       {
         "command": "instrktr.previousStep",
         "title": "Instrktr: Previous Step"
+      },
+      {
+        "command": "instrktr.jumpToStep",
+        "title": "Instrktr: Jump to Step…"
       },
       {
         "command": "instrktr.openLocalCourse",

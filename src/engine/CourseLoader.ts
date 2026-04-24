@@ -60,15 +60,31 @@ export class CourseLoader {
   }
 
   private _checkEngineVersion(engineVersion: string) {
-    // Simple semver range check — supports ">=X.Y.Z" and "^X.Y.Z"
-    const match = engineVersion.match(/[>=^~]*(\d+)\.(\d+)\.(\d+)/);
-    if (!match) { return; } // unparseable — allow
-    const [, major] = match;
-    // Extension is 0.x during development; just warn rather than hard-fail on version
-    const extMajor = 0;
-    if (parseInt(major) > extMajor + 1) {
+    const reqMatch = engineVersion.match(/[>=^~]*(\d+)\.(\d+)\.(\d+)/);
+    if (!reqMatch) { return; } // unparseable — allow
+
+    const [, rMaj, rMin, rPatch] = reqMatch.map(Number);
+
+    // Read the actual extension version from package.json bundled alongside the dist
+    let extVersion = '0.0.0';
+    try {
+      // __dirname points to dist/ at runtime; package.json is one level up
+      const pkgPath = require('path').join(__dirname, '..', 'package.json');
+      extVersion = JSON.parse(require('fs').readFileSync(pkgPath, 'utf8')).version ?? '0.0.0';
+    } catch { /* fall back to 0.0.0 — will only fail in tests */ }
+
+    const extMatch = extVersion.match(/(\d+)\.(\d+)\.(\d+)/);
+    if (!extMatch) { return; }
+    const [, eMaj, eMin, ePatch] = extMatch.map(Number);
+
+    const engineTuple = [eMaj, eMin, ePatch] as const;
+    const reqTuple    = [rMaj, rMin, rPatch] as const;
+
+    const isOlder = engineTuple < reqTuple;   // lexicographic tuple compare works for arrays in JS
+    if (isOlder) {
       throw new Error(
-        `Course requires engine version ${engineVersion}, but this is v0.x. Please update the extension.`,
+        `This course requires Instrktr engine ${engineVersion} (you have v${extVersion}). ` +
+        `Please update the Instrktr extension.`,
       );
     }
   }

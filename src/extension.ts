@@ -260,6 +260,22 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('instrktr.nextStep', () => runner.nextStep()),
     vscode.commands.registerCommand('instrktr.previousStep', () => runner.previousStep()),
 
+    vscode.commands.registerCommand('instrktr.jumpToStep', async () => {
+      const total = runner.totalSteps;
+      if (total === 0) {
+        vscode.window.showWarningMessage('No course is currently loaded.');
+        return;
+      }
+      const items = Array.from({ length: total }, (_, i) => ({
+        label: `Step ${i + 1}`,
+        index: i,
+      }));
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Jump to step…',
+      });
+      if (pick) { runner.jumpToStep(pick.index); }
+    }),
+
     vscode.commands.registerCommand('instrktr.signIn', () => auth.signIn()),
     vscode.commands.registerCommand('instrktr.signOut', () => auth.signOut()),
 

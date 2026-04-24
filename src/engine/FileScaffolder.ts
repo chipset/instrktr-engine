@@ -27,9 +27,10 @@ export class FileScaffolder {
     }
 
     if (skipped.length > 0) {
+      const preview = skipped.slice(0, 3).join(', ');
+      const tail = skipped.length > 3 ? ` (+${skipped.length - 3} more)` : '';
       vscode.window.showInformationMessage(
-        `Instrktr: Skipped ${skipped.length} existing file(s) — your changes are preserved. ` +
-        `(${skipped.join(', ')})`,
+        `Instrktr: ${skipped.length} existing file(s) left unchanged — your work is preserved. (${preview}${tail})`,
       );
     }
   }
