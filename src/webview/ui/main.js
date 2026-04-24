@@ -76,6 +76,15 @@ function showResult(result) {
   }
 }
 
+// Intercept open: links inside rendered instructions
+instructions.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="open:"]');
+  if (!link) { return; }
+  e.preventDefault();
+  const filePath = link.getAttribute('href').slice('open:'.length);
+  vscode.postMessage({ command: 'openFile', path: filePath });
+});
+
 checkBtn.addEventListener('click', () => {
   checkBtn.disabled = true;
   checkBtn.textContent = 'Checking…';

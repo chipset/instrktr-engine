@@ -132,6 +132,7 @@ export class StepRunner {
   get stepIndex(): number { return this._stepIndex; }
   get totalSteps(): number { return this._course?.steps.length ?? 0; }
   get fileWatcher(): FileWatcher { return this._fileWatcher; }
+  get workspaceRoot(): vscode.Uri { return this._workspaceRoot; }
 
   dispose() {
     this._fileWatcher.dispose();

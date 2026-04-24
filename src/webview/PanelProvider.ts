@@ -73,6 +73,12 @@ export class PanelProvider implements vscode.WebviewViewProvider {
         case 'signOut':
           this._auth.signOut();
           break;
+
+        case 'openFile': {
+          const uri = vscode.Uri.joinPath(this._runner.workspaceRoot, message.path);
+          vscode.commands.executeCommand('vscode.open', uri);
+          break;
+        }
       }
     });
   }

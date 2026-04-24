@@ -121,6 +121,31 @@ body {
   padding: 0;
 }
 
+/* open: file links render as clickable file chips */
+.instructions a[href^="open:"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 4px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: 12px;
+  color: var(--vscode-textLink-foreground);
+  background: var(--vscode-textCodeBlock-background);
+  border: 1px solid var(--vscode-panel-border, transparent);
+  cursor: pointer;
+  text-decoration: none;
+}
+.instructions a[href^="open:"]:hover {
+  background: var(--vscode-list-hoverBackground);
+  text-decoration: none;
+}
+.instructions a[href^="open:"]::before {
+  content: '↗';
+  font-size: 11px;
+  opacity: 0.7;
+}
+
 .instructions ul,
 .instructions ol {
   padding-left: 20px;
