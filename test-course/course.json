@@ -1,0 +1,36 @@
+{
+  "id": "git-basics",
+  "title": "Git Fundamentals",
+  "version": "1.0.0",
+  "engineVersion": ">=0.1.0",
+  "steps": [
+    {
+      "id": "init-repo",
+      "title": "Initialize a Repository",
+      "instructions": "steps/01-init/instructions.md",
+      "starter": "steps/01-init/starter",
+      "validator": "steps/01-init/validate.js",
+      "hints": [
+        "Open the terminal with Ctrl+` and type `git init`",
+        "Look for a `.git` folder in the file explorer after running the command"
+      ]
+    },
+    {
+      "id": "first-commit",
+      "title": "Make Your First Commit",
+      "instructions": "steps/02-commit/instructions.md",
+      "starter": "steps/02-commit/starter",
+      "validator": "steps/02-commit/validate.js",
+      "hints": [
+        "Stage your files with `git add .`",
+        "Then run `git commit -m \"your message\"`"
+      ]
+    }
+  ],
+  "migration": {
+    "0.9.0": {
+      "setup": "init-repo",
+      "commit": "first-commit"
+    }
+  }
+}

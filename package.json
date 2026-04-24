@@ -1,0 +1,128 @@
+{
+  "name": "instrktr",
+  "displayName": "Instrktr",
+  "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
+  "version": "0.3.0",
+  "publisher": "instrktr",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e2a3a",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/instrktr/instrktr-engine"
+  },
+  "keywords": [
+    "learning",
+    "courses",
+    "education",
+    "interactive",
+    "training"
+  ],
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "instrktr.startCourse",
+        "title": "Instrktr: Start Course"
+      },
+      {
+        "command": "instrktr.checkWork",
+        "title": "Instrktr: Check My Work"
+      },
+      {
+        "command": "instrktr.nextStep",
+        "title": "Instrktr: Next Step"
+      },
+      {
+        "command": "instrktr.previousStep",
+        "title": "Instrktr: Previous Step"
+      },
+      {
+        "command": "instrktr.openLocalCourse",
+        "title": "Instrktr: Open Local Course Folder"
+      },
+      {
+        "command": "instrktr.browseCourses",
+        "title": "Instrktr: Browse Courses"
+      },
+      {
+        "command": "instrktr.refreshRegistry",
+        "title": "Instrktr: Refresh Course Catalog"
+      },
+      {
+        "command": "instrktr.restartCourse",
+        "title": "Instrktr: Restart Course"
+      },
+      {
+        "command": "instrktr.signIn",
+        "title": "Instrktr: Sign in with GitHub"
+      },
+      {
+        "command": "instrktr.signOut",
+        "title": "Instrktr: Sign out of GitHub"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "instrktr",
+          "title": "Instrktr",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "instrktr": [
+        {
+          "type": "webview",
+          "id": "instrktr.catalog",
+          "name": "Browse Courses"
+        },
+        {
+          "type": "webview",
+          "id": "instrktr.panel",
+          "name": "Active Course"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Instrktr",
+      "properties": {
+        "instrktr.registryUrl": {
+          "type": "string",
+          "default": "",
+          "description": "URL to the course registry.json"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "package": "vsce package",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "marked": "^18.0.2",
+    "yauzl": "^3.3.0"
+  }
+}

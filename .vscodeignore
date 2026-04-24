@@ -1,0 +1,10 @@
+.vscode/**
+src/**
+out/**
+node_modules/**
+esbuild.js
+tsconfig.json
+tsconfig.test.json
+*.map
+INSTRUQT_ENGINE_PLAN.md
+# test-course, docs, example-validators are intentionally included
