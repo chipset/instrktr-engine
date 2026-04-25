@@ -108,7 +108,12 @@ export class CourseDownloader {
 
         zipfile.on('entry', async (entry: yauzl.Entry) => {
           try {
-            const entryPath = path.join(destDir, entry.fileName);
+            const safeBase = path.resolve(destDir);
+            const entryPath = path.resolve(destDir, entry.fileName);
+            if (!entryPath.startsWith(safeBase + path.sep) && entryPath !== safeBase) {
+              zipfile.readEntry(); // skip zip-slip entries
+              return;
+            }
 
             if (/\/$/.test(entry.fileName)) {
               await fs.mkdir(entryPath, { recursive: true });

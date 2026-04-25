@@ -40,7 +40,9 @@ export class FileScaffolder {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
+      if (entry.isSymbolicLink()) {
+        continue; // never follow symlinks — course could point outside starter dir
+      } else if (entry.isDirectory()) {
         results.push(...(await this._readDirRecursive(full)));
       } else {
         results.push(full);

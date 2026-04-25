@@ -33,8 +33,9 @@ export function buildContext(
 ): ValidatorContext {
   const resolve = (p: string) => {
     // Prevent path traversal outside workspace root
-    const resolved = path.resolve(workspaceRoot.fsPath, p);
-    if (!resolved.startsWith(workspaceRoot.fsPath)) {
+    const root = workspaceRoot.fsPath;
+    const resolved = path.resolve(root, p);
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) {
       throw new Error(`Path "${p}" escapes the workspace root.`);
     }
     return vscode.Uri.file(resolved);

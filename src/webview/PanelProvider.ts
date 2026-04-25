@@ -97,7 +97,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
         case 'openFile': {
           const root = this._runner.workspaceRoot.fsPath;
           const resolved = path.resolve(root, message.path);
-          if (!resolved.startsWith(root)) { break; } // block path traversal
+          if (resolved !== root && !resolved.startsWith(root + path.sep)) { break; } // block path traversal
           vscode.commands.executeCommand('vscode.open', vscode.Uri.file(resolved));
           break;
         }
