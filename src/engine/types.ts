@@ -40,6 +40,12 @@ export interface CourseDef {
   migration?: Record<string, Record<string, string>>;
 }
 
+export interface ExecError {
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+}
+
 export type CheckStatus = 'pass' | 'fail' | 'warn';
 
 export interface CheckResult {
@@ -47,17 +53,14 @@ export interface CheckResult {
   message: string;
 }
 
-export interface StepState {
-  loaded: boolean;
-  courseComplete?: boolean;
-  loadError?: string;
+interface StepStateBase {
   courseTitle: string;
   stepIndex: number;
   totalSteps: number;
   completedSteps: number[];
-  title: string;
-  instructionsHtml: string;
-  hints: string[];
-  hasSolution: boolean;
-  result?: CheckResult;
 }
+
+export type StepState =
+  | (StepStateBase & { loaded: false; loadError?: string })
+  | (StepStateBase & { loaded: true; courseComplete: true })
+  | (StepStateBase & { loaded: true; courseComplete?: false; title: string; instructionsHtml: string; hints: string[]; hasSolution: boolean; hasValidator: boolean; result?: CheckResult });

@@ -1,11 +1,19 @@
 import * as vscode from 'vscode';
 import { CourseProgress } from '../engine/ProgressStore';
+import { logError } from '../logger';
 
 const GIST_FILENAME = 'instrktr-progress.json';
 const GIST_DESCRIPTION = 'Instrktr — course progress sync';
 const API = 'https://api.github.com';
+const GIST_REQUEST_TIMEOUT_MS = 15_000;
 
 type ProgressMap = Record<string, CourseProgress>;
+
+class GitHubApiError extends Error {
+  constructor(readonly status: number, method: string, path: string) {
+    super(`GitHub API ${method} ${path} → ${status}`);
+  }
+}
 
 export class GistSync {
   private _gistId: string | undefined;
@@ -30,8 +38,8 @@ export class GistSync {
   debouncedPush(token: string, data: ProgressMap) {
     if (this._pushTimer) { clearTimeout(this._pushTimer); }
     this._pushTimer = setTimeout(() => {
-      this._push(token, data).catch(() => {
-        // Background sync failure is non-fatal — local progress is authoritative
+      this._push(token, data).catch((err) => {
+        logError('Background Gist sync failed', err);
       });
     }, 300);
   }
@@ -106,15 +114,19 @@ export class GistSync {
   private async _resolveGistId(token: string): Promise<string | undefined> {
     if (this._gistId) { return this._gistId; }
 
-    const gists = await this._request('GET', '/gists?per_page=100', token) as unknown[];
-    if (Array.isArray(gists)) {
-      const found = (gists as Array<{ files: Record<string, unknown>; id: string }>)
-        .find((g) => GIST_FILENAME in g.files);
+    type GistItem = { files: Record<string, unknown>; id: string };
+    for (let page = 1; ; page++) {
+      const gists = await this._request('GET', `/gists?per_page=100&page=${page}`, token) as unknown[];
+      if (!Array.isArray(gists) || gists.length === 0) { break; }
+
+      const found = (gists as GistItem[]).find((g) => GIST_FILENAME in g.files);
       if (found) {
         this._gistId = found.id;
         await this._globalState.update('gistSyncId', this._gistId);
         return this._gistId;
       }
+
+      if (gists.length < 100) { break; } // reached the last page
     }
     return undefined;
   }
@@ -125,7 +137,7 @@ export class GistSync {
   }
 
   private _is404(err: unknown): boolean {
-    return String(err).includes('→ 404');
+    return err instanceof GitHubApiError && err.status === 404;
   }
 
   private async _request(
@@ -143,11 +155,11 @@ export class GistSync {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(GIST_REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      throw new Error(`GitHub API ${method} ${path} → ${res.status}`);
+      throw new GitHubApiError(res.status, method, path);
     }
     if (res.status === 204) { return null; }
     return res.json();

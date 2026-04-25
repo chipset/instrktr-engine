@@ -11,6 +11,7 @@ import { ProgressStore } from './engine/ProgressStore';
 import { AuthManager } from './github/AuthManager';
 import { GistSync } from './github/GistSync';
 import { RegistryCourse } from './engine/types';
+import { disposeLogger } from './logger';
 
 export async function activate(context: vscode.ExtensionContext) {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri
@@ -290,4 +291,4 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 }
 
-export function deactivate() {}
+export function deactivate() { disposeLogger(); }

@@ -48,10 +48,6 @@ export class StepRunner {
       stepIndex: 0,
       totalSteps: 0,
       completedSteps: [],
-      title: '',
-      instructionsHtml: '',
-      hints: [],
-      hasSolution: false,
     });
   }
 
@@ -127,10 +123,6 @@ export class StepRunner {
         stepIndex: this._stepIndex,
         totalSteps: this._course.steps.length,
         completedSteps: [...this._completedSteps],
-        title: '',
-        instructionsHtml: '',
-        hints: [],
-        hasSolution: false,
       });
       return false;
     }
@@ -242,6 +234,7 @@ export class StepRunner {
       instructionsHtml,
       hints: step.hints ?? [],
       hasSolution,
+      hasValidator: !!step.validator,
     });
   }
 }

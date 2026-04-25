@@ -2,7 +2,7 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { CheckResult } from './types';
+import { CheckResult, ExecError } from './types';
 import { buildContext, TerminalAPI } from '../context/ValidatorContext';
 
 const execFileAsync = promisify(execFile);
@@ -19,8 +19,16 @@ export class ValidatorRunner {
   }
 
   private async _runBash(validatorPath: string, stepIndex: number): Promise<CheckResult> {
+    if (process.platform === 'win32') {
+      return {
+        status: 'fail',
+        message: 'Bash validators are not supported on Windows. Use a JS validator (validate.js) instead.',
+      };
+    }
+
     const courseDir = path.dirname(path.dirname(validatorPath)); // step dir → course dir
     const workspace = this._workspaceRoot.fsPath;
+    const shell = process.env['SHELL'] ?? 'bash';
 
     const timeout = new Promise<CheckResult>((_, reject) =>
       setTimeout(
@@ -31,7 +39,7 @@ export class ValidatorRunner {
 
     const run = new Promise<CheckResult>(async (resolve) => {
       try {
-        const { stdout } = await execFileAsync('bash', [validatorPath], {
+        const { stdout } = await execFileAsync(shell, [validatorPath], {
           cwd: courseDir,
           env: {
             ...process.env,
@@ -41,7 +49,7 @@ export class ValidatorRunner {
         });
         resolve({ status: 'pass', message: stdout.trim() || 'Step complete!' });
       } catch (err: unknown) {
-        const e = err as { stdout?: string; stderr?: string; code?: number };
+        const e = err as ExecError;
         const message = (e.stdout ?? e.stderr ?? String(err)).trim() || 'Check failed.';
         const exitCode = e.code ?? 1;
         const status = exitCode === 2 ? 'warn' : 'fail';
@@ -88,10 +96,10 @@ export class ValidatorRunner {
       async run(command) {
         try {
           const [cmd, ...args] = command.split(/\s+/);
-          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd, shell: true });
+          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });
           return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
-          const e = err as { stdout?: string; stderr?: string; code?: number };
+          const e = err as ExecError;
           return {
             stdout: (e.stdout ?? '').trim(),
             stderr: (e.stderr ?? '').trim(),

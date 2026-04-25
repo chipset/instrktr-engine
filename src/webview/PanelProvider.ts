@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { randomBytes } from 'crypto';
 import { StepRunner } from '../engine/StepRunner';
 import { AuthManager, AuthState } from '../github/AuthManager';
 import type { StepState } from '../engine/types';
@@ -55,7 +57,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           } catch (err) {
             webviewView.webview.postMessage({
               command: 'checkResult',
-              result: { status: 'fail', message: `Unexpected error during check: ${err}` },
+              result: { status: 'fail', message: `Unexpected error during check: ${String(err)}` },
             });
           }
           break;
@@ -94,8 +96,8 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 
         case 'openFile': {
           const root = this._runner.workspaceRoot.fsPath;
-          const resolved = require('path').resolve(root, message.path);
-          if (!resolved.startsWith(root)) { break; } // block path traversal
+          const resolved = path.resolve(root, message.path);
+          if (resolved !== root && !resolved.startsWith(root + path.sep)) { break; } // block path traversal
           vscode.commands.executeCommand('vscode.open', vscode.Uri.file(resolved));
           break;
         }
@@ -104,17 +106,30 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           const solutionDir = this._runner.currentStepSolutionDir();
           if (!solutionDir) { break; }
           const files = await listFilesRecursive(vscode.Uri.file(solutionDir));
+          if (files.length === 0) { break; }
           const solutionBase = vscode.Uri.file(solutionDir);
-          for (const fileUri of files) {
-            const rel = fileUri.path.slice(solutionBase.path.length + 1);
-            const workspaceUri = vscode.Uri.joinPath(this._runner.workspaceRoot, rel);
-            await vscode.commands.executeCommand(
-              'vscode.diff',
-              workspaceUri,
-              fileUri,
-              `${rel}  (Your file ↔ Solution)`,
-            );
+
+          let targetFile = files[0];
+          if (files.length > 1) {
+            const items = files.map((f) => ({
+              label: f.path.slice(solutionBase.path.length + 1),
+              uri: f,
+            }));
+            const pick = await vscode.window.showQuickPick(items, {
+              placeHolder: 'Choose a file to compare with the solution',
+            });
+            if (!pick) { break; }
+            targetFile = pick.uri;
           }
+
+          const rel = targetFile.path.slice(solutionBase.path.length + 1);
+          const workspaceUri = vscode.Uri.joinPath(this._runner.workspaceRoot, rel);
+          await vscode.commands.executeCommand(
+            'vscode.diff',
+            workspaceUri,
+            targetFile,
+            `${rel}  (Your file ↔ Solution)`,
+          );
           break;
         }
       }
@@ -158,7 +173,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     <h2 class="completion-heading">Course Complete!</h2>
     <p class="completion-course" id="completion-title"></p>
     <p class="completion-sub">You've finished every step.</p>
-    <button class="btn btn-ghost" id="restart-btn">Start Over</button>
+    <button class="btn btn-ghost" id="restart-btn">Restart Course</button>
   </div>
 
   <div class="panel" id="panel" hidden>
@@ -175,6 +190,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
       <div class="hint-header">
         <span class="hint-label">Hint</span>
         <span class="hint-counter" id="hint-counter"></span>
+        <button class="btn btn-ghost btn-sm" id="dismiss-hints-btn" aria-label="Dismiss hints">✕</button>
       </div>
       <div class="hint" id="hint-text"></div>
       <button class="btn btn-ghost btn-sm" id="next-hint-btn" hidden>Next Hint →</button>
@@ -224,5 +240,5 @@ async function listFilesRecursive(dir: vscode.Uri): Promise<vscode.Uri[]> {
 }
 
 function getNonce() {
-  return require('crypto').randomBytes(16).toString('hex');
+  return randomBytes(16).toString('hex');
 }

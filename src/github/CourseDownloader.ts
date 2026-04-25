@@ -107,25 +107,34 @@ export class CourseDownloader {
         zipfile.readEntry();
 
         zipfile.on('entry', async (entry: yauzl.Entry) => {
-          const entryPath = path.join(destDir, entry.fileName);
-
-          if (/\/$/.test(entry.fileName)) {
-            await fs.mkdir(entryPath, { recursive: true });
-            zipfile.readEntry();
-            return;
-          }
-
-          await fs.mkdir(path.dirname(entryPath), { recursive: true });
-
-          zipfile.openReadStream(entry, (streamErr, readStream) => {
-            if (streamErr || !readStream) {
-              return reject(streamErr ?? new Error('Failed to open entry stream'));
+          try {
+            const safeBase = path.resolve(destDir);
+            const entryPath = path.resolve(destDir, entry.fileName);
+            if (!entryPath.startsWith(safeBase + path.sep) && entryPath !== safeBase) {
+              zipfile.readEntry(); // skip zip-slip entries
+              return;
             }
-            const writeStream = fsSync.createWriteStream(entryPath);
-            readStream.pipe(writeStream);
-            writeStream.on('finish', () => zipfile.readEntry());
-            writeStream.on('error', reject);
-          });
+
+            if (/\/$/.test(entry.fileName)) {
+              await fs.mkdir(entryPath, { recursive: true });
+              zipfile.readEntry();
+              return;
+            }
+
+            await fs.mkdir(path.dirname(entryPath), { recursive: true });
+
+            zipfile.openReadStream(entry, (streamErr, readStream) => {
+              if (streamErr || !readStream) {
+                return reject(streamErr ?? new Error('Failed to open entry stream'));
+              }
+              const writeStream = fsSync.createWriteStream(entryPath);
+              readStream.pipe(writeStream);
+              writeStream.on('finish', () => zipfile.readEntry());
+              writeStream.on('error', reject);
+            });
+          } catch (err) {
+            reject(err);
+          }
         });
 
         zipfile.on('end', resolve);
