@@ -63,4 +63,4 @@ interface StepStateBase {
 export type StepState =
   | (StepStateBase & { loaded: false; loadError?: string })
   | (StepStateBase & { loaded: true; courseComplete: true })
-  | (StepStateBase & { loaded: true; courseComplete?: false; title: string; instructionsHtml: string; hints: string[]; hasSolution: boolean; result?: CheckResult });
+  | (StepStateBase & { loaded: true; courseComplete?: false; title: string; instructionsHtml: string; hints: string[]; hasSolution: boolean; hasValidator: boolean; result?: CheckResult });

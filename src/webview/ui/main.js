@@ -27,9 +27,12 @@ const compareBtn = document.getElementById('compare-btn');
 const completionTitle = document.getElementById('completion-title');
 const restartBtn = document.getElementById('restart-btn');
 
+const dismissHintsBtn = document.getElementById('dismiss-hints-btn');
+
 let hints = [];
 let currentHint = -1;
 let hasSolution = false;
+let checkTimeout = null;
 
 function sanitizeHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -98,17 +101,27 @@ function applyState(state) {
 
   prevBtn.hidden = state.stepIndex === 0;
 
+  // Clear any pending check timeout on navigation
+  if (checkTimeout) { clearTimeout(checkTimeout); checkTimeout = null; }
+
   // Clear result on every state change (step navigation)
   resultEl.hidden = true;
   resultEl.className = 'result';
   compareBtn.hidden = true;
-  checkBtn.hidden = false;
-  checkBtn.disabled = false;
-  checkBtn.textContent = 'Check My Work';
-  nextBtn.hidden = true;
 
-  if (state.result) {
-    showResult(state.result);
+  if (!state.hasValidator) {
+    // No validator — skip the check ceremony, go straight to Next Step
+    checkBtn.hidden = true;
+    nextBtn.hidden = false;
+  } else {
+    checkBtn.hidden = false;
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Check My Work';
+    nextBtn.hidden = true;
+
+    if (state.result) {
+      showResult(state.result);
+    }
   }
 }
 
@@ -150,6 +163,12 @@ checkBtn.addEventListener('click', () => {
   checkBtn.disabled = true;
   checkBtn.textContent = 'Checking…';
   vscode.postMessage({ command: 'checkWork' });
+  checkTimeout = setTimeout(() => {
+    checkTimeout = null;
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Check My Work';
+    showResult({ status: 'fail', message: 'Validator timed out. Try again or reload the panel.' });
+  }, 35_000);
 });
 
 nextBtn.addEventListener('click', () => {
@@ -167,6 +186,11 @@ hintBtn.addEventListener('click', () => {
   nextHintBtn.hidden = currentHint >= hints.length - 1;
   hintCounter.textContent = `${currentHint + 1} / ${hints.length}`;
   hintBtn.hidden = true;
+});
+
+dismissHintsBtn.addEventListener('click', () => {
+  hintsSection.hidden = true;
+  hintBtn.hidden = hints.length === 0;
 });
 
 nextHintBtn.addEventListener('click', () => {
@@ -194,7 +218,7 @@ window.addEventListener('message', (event) => {
       applyAuth(msg.auth);
       break;
     case 'checkResult':
-      // Always re-enable the button regardless of outcome
+      if (checkTimeout) { clearTimeout(checkTimeout); checkTimeout = null; }
       checkBtn.disabled = false;
       checkBtn.textContent = 'Check My Work';
       showResult(msg.result);

@@ -234,6 +234,7 @@ export class StepRunner {
       instructionsHtml,
       hints: step.hints ?? [],
       hasSolution,
+      hasValidator: !!step.validator,
     });
   }
 }
