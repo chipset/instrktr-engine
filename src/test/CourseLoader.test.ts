@@ -8,6 +8,7 @@ vi.mock('fs', () => ({
 }));
 
 import * as fsp from 'fs/promises';
+import * as fsSync from 'fs';
 import { CourseLoader } from '../engine/CourseLoader';
 
 const validManifest = {
@@ -85,5 +86,65 @@ describe('CourseLoader', () => {
   it('throws when a step is not an object', async () => {
     mockReadFile({ ...validManifest, steps: ['not-object'] });
     await expect(loader.load('/bad')).rejects.toThrow('Step 0 is not a valid object');
+  });
+});
+
+describe('CourseLoader._checkEngineVersion (semver)', () => {
+  function makeLoader(extVersion: string) {
+    vi.mocked(fsSync.readFileSync).mockReturnValue(`{"version":"${extVersion}"}` as never);
+    return new CourseLoader();
+  }
+
+  function manifest(engineVersion: string) {
+    return { ...validManifest, engineVersion };
+  }
+
+  beforeEach(() => {
+    vi.mocked(fsp.readFile).mockResolvedValue(
+      Buffer.from(JSON.stringify(validManifest)) as never,
+    );
+  });
+
+  it('accepts a course whose engineVersion equals the extension version', async () => {
+    const loader = makeLoader('0.3.5');
+    mockReadFile(manifest('>=0.3.5'));
+    await expect(loader.load('/c')).resolves.toBeDefined();
+  });
+
+  it('accepts a course whose engineVersion is older than the extension version', async () => {
+    const loader = makeLoader('0.3.5');
+    mockReadFile(manifest('>=0.2.0'));
+    await expect(loader.load('/c')).resolves.toBeDefined();
+  });
+
+  it('rejects when extension major version is too old', async () => {
+    const loader = makeLoader('0.3.5');
+    mockReadFile(manifest('>=1.0.0'));
+    await expect(loader.load('/c')).rejects.toThrow('requires Instrktr engine');
+  });
+
+  it('rejects when extension minor version is too old', async () => {
+    const loader = makeLoader('0.3.5');
+    mockReadFile(manifest('>=0.4.0'));
+    await expect(loader.load('/c')).rejects.toThrow('requires Instrktr engine');
+  });
+
+  it('rejects when extension patch version is too old', async () => {
+    const loader = makeLoader('0.3.5');
+    mockReadFile(manifest('>=0.3.6'));
+    await expect(loader.load('/c')).rejects.toThrow('requires Instrktr engine');
+  });
+
+  it('correctly handles double-digit patch versions (the string-compare bug)', async () => {
+    // "0.3.9" < "0.3.10" numerically — string compare would wrongly say "0.3.10" < "0.3.9"
+    const loader = makeLoader('0.3.10');
+    mockReadFile(manifest('>=0.3.9'));
+    await expect(loader.load('/c')).resolves.toBeDefined();
+  });
+
+  it('correctly handles double-digit minor versions', async () => {
+    const loader = makeLoader('0.10.0');
+    mockReadFile(manifest('>=0.9.0'));
+    await expect(loader.load('/c')).resolves.toBeDefined();
   });
 });

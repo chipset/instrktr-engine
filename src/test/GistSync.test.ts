@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GistSync } from '../github/GistSync';
 import { CourseProgress } from '../engine/ProgressStore';
 
@@ -72,27 +72,65 @@ describe('GistSync._merge', () => {
 });
 
 describe('GistSync.pull with mocked fetch', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
+
+  function stubFetch(handler: (url: string) => { ok: boolean; status: number; json: () => Promise<unknown> }) {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => Promise.resolve(handler(url))));
+  }
 
   it('returns null when fetch throws', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')));
-    const sync = new GistSync(makeMemento());
-    const result = await sync.pull('token', {});
+    const result = await new GistSync(makeMemento()).pull('token', {});
     expect(result).toBeNull();
-    vi.unstubAllGlobals();
   });
 
   it('returns null when gist list is empty', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => [],
-    }));
-    const sync = new GistSync(makeMemento());
-    const result = await sync.pull('token', {});
+    stubFetch(() => ({ ok: true, status: 200, json: async () => [] }));
+    const result = await new GistSync(makeMemento()).pull('token', {});
     expect(result).toBeNull();
-    vi.unstubAllGlobals();
+  });
+
+  it('paginates: finds gist on second page when first page is full', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+      id: `other-${i}`,
+      files: { 'something-else.json': {} },
+    }));
+    const secondPage = [{ id: 'target-gist-id', files: { 'instrktr-progress.json': {} } }];
+    const gistContent = JSON.stringify({ 'course-a': makeProgress('2024-01-01T00:00:00.000Z') });
+
+    let call = 0;
+    stubFetch((url) => {
+      call++;
+      if (call === 1) { return { ok: true, status: 200, json: async () => firstPage }; }
+      if (call === 2) { return { ok: true, status: 200, json: async () => secondPage }; }
+      // call 3: fetch the gist content
+      return { ok: true, status: 200, json: async () => ({ files: { 'instrktr-progress.json': { content: gistContent } } }) };
+    });
+
+    const result = await new GistSync(makeMemento()).pull('token', {});
+    expect(result).not.toBeNull();
+    expect(result!['course-a']).toBeDefined();
+  });
+
+  it('stops paginating when a page has fewer than 100 items', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => [] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new GistSync(makeMemento()).pull('token', {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a 404 response as a deleted gist (clears cached ID)', async () => {
+    const memento = makeMemento();
+    memento.get.mockReturnValue('cached-gist-id');
+
+    stubFetch(() => ({ ok: false, status: 404, json: async () => null }));
+
+    const sync = new GistSync(memento);
+    await sync.pull('token', {});
+    expect(memento.update).toHaveBeenCalledWith('gistSyncId', undefined);
   });
 });

@@ -19,8 +19,16 @@ export class ValidatorRunner {
   }
 
   private async _runBash(validatorPath: string, stepIndex: number): Promise<CheckResult> {
+    if (process.platform === 'win32') {
+      return {
+        status: 'fail',
+        message: 'Bash validators are not supported on Windows. Use a JS validator (validate.js) instead.',
+      };
+    }
+
     const courseDir = path.dirname(path.dirname(validatorPath)); // step dir → course dir
     const workspace = this._workspaceRoot.fsPath;
+    const shell = process.env['SHELL'] ?? 'bash';
 
     const timeout = new Promise<CheckResult>((_, reject) =>
       setTimeout(
@@ -31,7 +39,7 @@ export class ValidatorRunner {
 
     const run = new Promise<CheckResult>(async (resolve) => {
       try {
-        const { stdout } = await execFileAsync('bash', [validatorPath], {
+        const { stdout } = await execFileAsync(shell, [validatorPath], {
           cwd: courseDir,
           env: {
             ...process.env,
@@ -88,7 +96,7 @@ export class ValidatorRunner {
       async run(command) {
         try {
           const [cmd, ...args] = command.split(/\s+/);
-          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd, shell: true });
+          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });
           return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
           const e = err as ExecError;

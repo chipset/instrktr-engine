@@ -3,6 +3,12 @@ import { readFileSync } from 'fs';
 import * as path from 'path';
 import { CourseDef, StepDef } from './types';
 
+function semverLessThan(a: [number, number, number], b: [number, number, number]): boolean {
+  if (a[0] !== b[0]) { return a[0] < b[0]; }
+  if (a[1] !== b[1]) { return a[1] < b[1]; }
+  return a[2] < b[2];
+}
+
 const REQUIRED_COURSE_FIELDS: (keyof CourseDef)[] = ['id', 'title', 'version', 'engineVersion', 'steps'];
 const REQUIRED_STEP_FIELDS: (keyof StepDef)[] = ['id', 'title', 'instructions'];
 
@@ -78,10 +84,10 @@ export class CourseLoader {
     if (!extMatch) { return; }
     const [, eMaj, eMin, ePatch] = extMatch.map(Number);
 
-    const engineTuple = [eMaj, eMin, ePatch] as const;
-    const reqTuple    = [rMaj, rMin, rPatch] as const;
+    const engineTuple: [number, number, number] = [eMaj, eMin, ePatch];
+    const reqTuple:    [number, number, number] = [rMaj, rMin, rPatch];
 
-    const isOlder = engineTuple < reqTuple;   // lexicographic tuple compare works for arrays in JS
+    const isOlder = semverLessThan(engineTuple, reqTuple);
     if (isOlder) {
       throw new Error(
         `This course requires Instrktr engine ${engineVersion} (you have v${extVersion}). ` +

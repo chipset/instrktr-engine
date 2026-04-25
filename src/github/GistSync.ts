@@ -9,6 +9,12 @@ const GIST_REQUEST_TIMEOUT_MS = 15_000;
 
 type ProgressMap = Record<string, CourseProgress>;
 
+class GitHubApiError extends Error {
+  constructor(readonly status: number, method: string, path: string) {
+    super(`GitHub API ${method} ${path} → ${status}`);
+  }
+}
+
 export class GistSync {
   private _gistId: string | undefined;
   private _pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,15 +114,19 @@ export class GistSync {
   private async _resolveGistId(token: string): Promise<string | undefined> {
     if (this._gistId) { return this._gistId; }
 
-    const gists = await this._request('GET', '/gists?per_page=100', token) as unknown[];
-    if (Array.isArray(gists)) {
-      const found = (gists as Array<{ files: Record<string, unknown>; id: string }>)
-        .find((g) => GIST_FILENAME in g.files);
+    type GistItem = { files: Record<string, unknown>; id: string };
+    for (let page = 1; ; page++) {
+      const gists = await this._request('GET', `/gists?per_page=100&page=${page}`, token) as unknown[];
+      if (!Array.isArray(gists) || gists.length === 0) { break; }
+
+      const found = (gists as GistItem[]).find((g) => GIST_FILENAME in g.files);
       if (found) {
         this._gistId = found.id;
         await this._globalState.update('gistSyncId', this._gistId);
         return this._gistId;
       }
+
+      if (gists.length < 100) { break; } // reached the last page
     }
     return undefined;
   }
@@ -127,7 +137,7 @@ export class GistSync {
   }
 
   private _is404(err: unknown): boolean {
-    return String(err).includes('→ 404');
+    return err instanceof GitHubApiError && err.status === 404;
   }
 
   private async _request(
@@ -149,7 +159,7 @@ export class GistSync {
     });
 
     if (!res.ok) {
-      throw new Error(`GitHub API ${method} ${path} → ${res.status}`);
+      throw new GitHubApiError(res.status, method, path);
     }
     if (res.status === 204) { return null; }
     return res.json();
