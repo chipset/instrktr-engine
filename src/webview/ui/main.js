@@ -31,6 +31,20 @@ let hints = [];
 let currentHint = -1;
 let hasSolution = false;
 
+function sanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script, style').forEach(el => el.remove());
+  doc.querySelectorAll('*').forEach(el => {
+    for (const attr of [...el.attributes]) {
+      if (/^on/i.test(attr.name)) { el.removeAttribute(attr.name); }
+      if ((attr.name === 'href' || attr.name === 'src') && /^javascript:/i.test(attr.value)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  });
+  return doc.body.innerHTML;
+}
+
 function applyState(state) {
   const loaded = state.loaded ?? false;
 
@@ -61,7 +75,7 @@ function applyState(state) {
   stepProgress.textContent = `Step ${state.stepIndex + 1} of ${state.totalSteps}`;
   courseTitle.textContent = state.courseTitle;
   stepTitle.textContent = state.title;
-  instructions.innerHTML = state.instructionsHtml;
+  instructions.innerHTML = sanitizeHtml(state.instructionsHtml);
 
   // Render step dots — clickable
   stepDots.innerHTML = '';

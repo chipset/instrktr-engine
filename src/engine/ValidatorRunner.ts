@@ -2,7 +2,7 @@ import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { CheckResult } from './types';
+import { CheckResult, ExecError } from './types';
 import { buildContext, TerminalAPI } from '../context/ValidatorContext';
 
 const execFileAsync = promisify(execFile);
@@ -41,7 +41,7 @@ export class ValidatorRunner {
         });
         resolve({ status: 'pass', message: stdout.trim() || 'Step complete!' });
       } catch (err: unknown) {
-        const e = err as { stdout?: string; stderr?: string; code?: number };
+        const e = err as ExecError;
         const message = (e.stdout ?? e.stderr ?? String(err)).trim() || 'Check failed.';
         const exitCode = e.code ?? 1;
         const status = exitCode === 2 ? 'warn' : 'fail';
@@ -91,7 +91,7 @@ export class ValidatorRunner {
           const { stdout, stderr } = await execFileAsync(cmd, args, { cwd, shell: true });
           return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
-          const e = err as { stdout?: string; stderr?: string; code?: number };
+          const e = err as ExecError;
           return {
             stdout: (e.stdout ?? '').trim(),
             stderr: (e.stderr ?? '').trim(),

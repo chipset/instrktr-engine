@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { CourseProgress } from '../engine/ProgressStore';
+import { logError } from '../logger';
 
 const GIST_FILENAME = 'instrktr-progress.json';
 const GIST_DESCRIPTION = 'Instrktr — course progress sync';
 const API = 'https://api.github.com';
+const GIST_REQUEST_TIMEOUT_MS = 15_000;
 
 type ProgressMap = Record<string, CourseProgress>;
 
@@ -30,8 +32,8 @@ export class GistSync {
   debouncedPush(token: string, data: ProgressMap) {
     if (this._pushTimer) { clearTimeout(this._pushTimer); }
     this._pushTimer = setTimeout(() => {
-      this._push(token, data).catch(() => {
-        // Background sync failure is non-fatal — local progress is authoritative
+      this._push(token, data).catch((err) => {
+        logError('Background Gist sync failed', err);
       });
     }, 300);
   }
@@ -143,7 +145,7 @@ export class GistSync {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(GIST_REQUEST_TIMEOUT_MS),
     });
 
     if (!res.ok) {

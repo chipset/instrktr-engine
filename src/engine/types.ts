@@ -40,6 +40,12 @@ export interface CourseDef {
   migration?: Record<string, Record<string, string>>;
 }
 
+export interface ExecError {
+  stdout?: string;
+  stderr?: string;
+  code?: number;
+}
+
 export type CheckStatus = 'pass' | 'fail' | 'warn';
 
 export interface CheckResult {

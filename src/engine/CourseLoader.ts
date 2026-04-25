@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import { readFileSync } from 'fs';
 import * as path from 'path';
 import { CourseDef, StepDef } from './types';
 
@@ -35,7 +36,7 @@ export class CourseLoader {
   }
 
   private _validateCourse(obj: unknown) {
-    if (typeof obj !== 'object' || obj === null) {
+    if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
       throw new Error('course.json must be a JSON object');
     }
     for (const field of REQUIRED_COURSE_FIELDS) {
@@ -69,8 +70,8 @@ export class CourseLoader {
     let extVersion = '0.0.0';
     try {
       // __dirname points to dist/ at runtime; package.json is one level up
-      const pkgPath = require('path').join(__dirname, '..', 'package.json');
-      extVersion = JSON.parse(require('fs').readFileSync(pkgPath, 'utf8')).version ?? '0.0.0';
+      const pkgPath = path.join(__dirname, '..', 'package.json');
+      extVersion = JSON.parse(readFileSync(pkgPath, 'utf8')).version ?? '0.0.0';
     } catch { /* fall back to 0.0.0 — will only fail in tests */ }
 
     const extMatch = extVersion.match(/(\d+)\.(\d+)\.(\d+)/);

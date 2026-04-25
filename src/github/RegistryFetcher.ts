@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { Registry, CachedRegistry } from '../engine/types';
+import { logError } from '../logger';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_FILE = 'registry-cache.json';
+const REGISTRY_FETCH_TIMEOUT_MS = 10_000;
 
 export class RegistryFetcher {
   constructor(private readonly _storageUri: vscode.Uri) {}
@@ -55,7 +57,7 @@ export class RegistryFetcher {
   private async _fetchRemote(url: string): Promise<Registry> {
     const response = await fetch(url, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(REGISTRY_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -105,8 +107,8 @@ export class RegistryFetcher {
         uri,
         Buffer.from(JSON.stringify(cached, null, 2)),
       );
-    } catch {
-      // Cache write failing is non-fatal
+    } catch (err) {
+      logError('Failed to write registry cache', err);
     }
   }
 }

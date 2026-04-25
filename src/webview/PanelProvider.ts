@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { randomBytes } from 'crypto';
 import { StepRunner } from '../engine/StepRunner';
 import { AuthManager, AuthState } from '../github/AuthManager';
 import type { StepState } from '../engine/types';
@@ -94,7 +96,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 
         case 'openFile': {
           const root = this._runner.workspaceRoot.fsPath;
-          const resolved = require('path').resolve(root, message.path);
+          const resolved = path.resolve(root, message.path);
           if (!resolved.startsWith(root)) { break; } // block path traversal
           vscode.commands.executeCommand('vscode.open', vscode.Uri.file(resolved));
           break;
@@ -224,5 +226,5 @@ async function listFilesRecursive(dir: vscode.Uri): Promise<vscode.Uri[]> {
 }
 
 function getNonce() {
-  return require('crypto').randomBytes(16).toString('hex');
+  return randomBytes(16).toString('hex');
 }
