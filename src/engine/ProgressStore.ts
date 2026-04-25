@@ -37,7 +37,7 @@ export class ProgressStore {
 
   /** Replace local data with a merged map (used by GistSync after a pull). */
   async applyMerge(merged: ProgressMap): Promise<void> {
-    this._data = merged;
+    this._data = { ...merged };
     await this._save();
   }
 

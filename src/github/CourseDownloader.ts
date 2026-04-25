@@ -107,25 +107,29 @@ export class CourseDownloader {
         zipfile.readEntry();
 
         zipfile.on('entry', async (entry: yauzl.Entry) => {
-          const entryPath = path.join(destDir, entry.fileName);
+          try {
+            const entryPath = path.join(destDir, entry.fileName);
 
-          if (/\/$/.test(entry.fileName)) {
-            await fs.mkdir(entryPath, { recursive: true });
-            zipfile.readEntry();
-            return;
-          }
-
-          await fs.mkdir(path.dirname(entryPath), { recursive: true });
-
-          zipfile.openReadStream(entry, (streamErr, readStream) => {
-            if (streamErr || !readStream) {
-              return reject(streamErr ?? new Error('Failed to open entry stream'));
+            if (/\/$/.test(entry.fileName)) {
+              await fs.mkdir(entryPath, { recursive: true });
+              zipfile.readEntry();
+              return;
             }
-            const writeStream = fsSync.createWriteStream(entryPath);
-            readStream.pipe(writeStream);
-            writeStream.on('finish', () => zipfile.readEntry());
-            writeStream.on('error', reject);
-          });
+
+            await fs.mkdir(path.dirname(entryPath), { recursive: true });
+
+            zipfile.openReadStream(entry, (streamErr, readStream) => {
+              if (streamErr || !readStream) {
+                return reject(streamErr ?? new Error('Failed to open entry stream'));
+              }
+              const writeStream = fsSync.createWriteStream(entryPath);
+              readStream.pipe(writeStream);
+              writeStream.on('finish', () => zipfile.readEntry());
+              writeStream.on('error', reject);
+            });
+          } catch (err) {
+            reject(err);
+          }
         });
 
         zipfile.on('end', resolve);

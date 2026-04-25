@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomBytes } from 'crypto';
 import { RegistryFetcher } from '../github/RegistryFetcher';
 import { InstalledCourses } from '../github/InstalledCourses';
 import { RegistryCourse } from '../engine/types';
@@ -132,5 +133,5 @@ export class CatalogProvider implements vscode.WebviewViewProvider {
 }
 
 function getNonce() {
-  return require('crypto').randomBytes(16).toString('hex');
+  return randomBytes(16).toString('hex');
 }

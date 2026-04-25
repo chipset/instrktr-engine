@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TerminalAPI } from '../context/ValidatorContext';
+import { ExecError } from '../engine/types';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -59,10 +60,11 @@ export class TerminalWatcher implements vscode.Disposable {
 
       async run(command: string) {
         try {
-          const { stdout, stderr } = await execFileAsync(command, [], { cwd, shell: true });
+          const [cmd, ...args] = command.split(/\s+/);
+          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });
           return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
-          const e = err as { stdout?: string; stderr?: string; code?: number };
+          const e = err as ExecError;
           return {
             stdout: (e.stdout ?? '').trim(),
             stderr: (e.stderr ?? '').trim(),
