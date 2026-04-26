@@ -1,0 +1,97 @@
+{
+  "id": "zowe-gulp-mocha",
+  "title": "Mainframe DevOps: Gulp, Zowe Endevor & Mocha",
+  "version": "1.0.0",
+  "engineVersion": ">=0.3.5",
+  "steps": [
+    {
+      "id": "init-project",
+      "title": "Initialize the Project",
+      "instructions": "steps/01-init/instructions.md",
+      "validator": "steps/01-init/validate.js",
+      "hints": [
+        "Run `npm init -y` to create package.json with default values.",
+        "Install all tools in one command: `npm install --save-dev gulp mocha chai sinon`"
+      ]
+    },
+    {
+      "id": "first-gulpfile",
+      "title": "Create Your First Gulpfile",
+      "instructions": "steps/02-gulpfile/instructions.md",
+      "validator": "steps/02-gulpfile/validate.js",
+      "solution": "steps/02-gulpfile/solution",
+      "hints": [
+        "Create `gulpfile.js` in your workspace root. Gulp 4 tasks are plain exported async functions — no separate registration step needed.",
+        "The minimum valid gulpfile: `const gulp = require('gulp'); async function hello() { console.log('Hello!'); } exports.default = hello;`"
+      ]
+    },
+    {
+      "id": "zowe-config",
+      "title": "Configure Zowe for Endevor",
+      "instructions": "steps/03-zowe-config/instructions.md",
+      "validator": "steps/03-zowe-config/validate.js",
+      "starter": "steps/03-zowe-config/starter",
+      "hints": [
+        "The `zowe.config.json` template has been copied to your workspace. Fill in the `host` (and optionally `port`) for your Endevor REST API server.",
+        "The `endevor-location` profile specifies the inventory location — set `instance`, `environment`, `system`, and `subsystem` to match your site. Placeholder values are fine if you don't have access yet."
+      ]
+    },
+    {
+      "id": "endevor-service",
+      "title": "Build the EndevorService Class",
+      "instructions": "steps/04-endevor-service/instructions.md",
+      "validator": "steps/04-endevor-service/validate.js",
+      "starter": "steps/04-endevor-service/starter",
+      "solution": "steps/04-endevor-service/solution",
+      "hints": [
+        "Each method should call `execAsync()` with the matching `zowe endevor` command and use `this.buildBaseArgs()` to append the common flags.",
+        "For `listElements()`: the `--rfj` flag makes Zowe return JSON — parse `stdout` with `JSON.parse()` and return `result.data`. The other two methods don't need to parse the output."
+      ]
+    },
+    {
+      "id": "endevor-gulp-tasks",
+      "title": "Wire Endevor Into Gulp",
+      "instructions": "steps/05-endevor-tasks/instructions.md",
+      "validator": "steps/05-endevor-tasks/validate.js",
+      "solution": "steps/05-endevor-tasks/solution",
+      "hints": [
+        "Import your service at the top of gulpfile.js: `const { EndevorService } = require('./src/endevor');` then create one service instance from environment variables.",
+        "Write three async Gulp task functions — `listElements`, `retrieveElement`, and `addElement` — that each call the corresponding service method. Export each one."
+      ]
+    },
+    {
+      "id": "mocha-tests",
+      "title": "Test EndevorService with Mocha & Sinon",
+      "instructions": "steps/06-mocha-tests/instructions.md",
+      "validator": "steps/06-mocha-tests/validate.js",
+      "starter": "steps/06-mocha-tests/starter",
+      "solution": "steps/06-mocha-tests/solution",
+      "hints": [
+        "Stub `child_process.exec` so tests never actually call Zowe CLI: `sinon.stub(childProcess, 'exec').yields(null, fakeStdout, '');` — call `sinon.restore()` in `afterEach`.",
+        "For `listElements()`, the fake stdout must be valid JSON matching Zowe's response shape: `JSON.stringify({ data: [{ elmName: 'HELLOPGM' }] })`"
+      ]
+    },
+    {
+      "id": "error-handling",
+      "title": "Add Error Handling and Error-Path Tests",
+      "instructions": "steps/07-error-handling/instructions.md",
+      "validator": "steps/07-error-handling/validate.js",
+      "solution": "steps/07-error-handling/solution",
+      "hints": [
+        "Wrap each `execAsync` call in a try/catch that re-throws an `Error` with a human-readable message: `throw new Error('Failed to list elements: ' + (err.stderr || err.message))`",
+        "In your test, make the stub yield an error: `sinon.stub(childProcess, 'exec').yields(new Error('Connection refused'), '', 'Connection refused');` then assert the thrown message contains your prefix."
+      ]
+    },
+    {
+      "id": "deploy-pipeline",
+      "title": "Build the Deployment Pipeline",
+      "instructions": "steps/08-pipeline/instructions.md",
+      "validator": "steps/08-pipeline/validate.js",
+      "solution": "steps/08-pipeline/solution",
+      "hints": [
+        "Use `gulp.series(clean, listElements, retrieveElement, runTests, addElement)` to define the pipeline — tasks run sequentially, each waiting for the previous to finish.",
+        "Export the pipeline as `deploy` and set it as the default: `const deploy = gulp.series(...); exports.deploy = deploy; exports.default = deploy;`"
+      ]
+    }
+  ]
+}

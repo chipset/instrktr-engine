@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/@zowe/cli/zowe.schema.json",
+  "profiles": {
+    "endevor": {
+      "type": "endevor",
+      "properties": {
+        "host":                "endevor.example.com",
+        "port":                8080,
+        "basePath":            "EndevorService/api/v2",
+        "protocol":            "https",
+        "rejectUnauthorized":  true
+      }
+    },
+    "endevor-location": {
+      "type": "endevor-location",
+      "properties": {
+        "instance":    "ENDEVOR",
+        "environment": "DEV",
+        "stageNumber": "1",
+        "system":      "MYAPP",
+        "subsystem":   "MAIN",
+        "type":        "*"
+      }
+    },
+    "base": {
+      "type": "base",
+      "properties": {
+        "tokenType": ""
+      },
+      "secure": ["tokenValue"]
+    }
+  },
+  "defaults": {
+    "endevor":          "endevor",
+    "endevor-location": "endevor-location",
+    "base":             "base"
+  },
+  "autoStore": true
+}
