@@ -28,6 +28,10 @@ Bash validators run as a child process from the **course directory** — not the
 
 All other environment variables from the VS Code process are also available (`PATH`, `HOME`, etc.).
 
+### Platform support
+
+Bash validators are not supported on Windows. If a learner runs a course with a `.sh` validator on Windows, the check will return a `fail` with a message directing them to use a JS validator instead. If your course targets Windows learners, write validators in JavaScript.
+
 ### Shebang
 
 Always include `#!/bin/bash` as the first line. On macOS the system `bash` is v3 — if you need arrays or associative arrays, add a dependency on `bash` 4+ or rewrite in JS.

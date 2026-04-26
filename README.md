@@ -24,7 +24,7 @@ Your progress is saved locally and synced across devices via GitHub Gist (option
 
 ## Installing courses
 
-Click **Browse Courses** in the Instrktr panel to open the catalog. Install any course with one click — it downloads automatically from GitHub.
+Click **Browse Courses** in the Instrktr panel to open the catalog. Install any course with one click — it downloads automatically from GitHub. If `git` is on your PATH, Instrktr uses `git clone` for a faster download; otherwise it falls back to a ZIP download.
 
 To run a course you're authoring locally, use the command palette:
 
@@ -150,6 +150,7 @@ See the [Configuration Reference](docs/configuration.md) for full details, scope
 
 - VS Code 1.93 or later
 - Node.js is **not** required — validators run in the extension host
+- `git` is **optional** — used for faster course downloads when available; falls back to ZIP if not installed
 
 ## License
 
