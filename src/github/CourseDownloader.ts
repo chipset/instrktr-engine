@@ -4,6 +4,10 @@ import * as fsSync from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as yauzl from 'yauzl';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 export class CourseDownloader {
   private readonly _coursesDir: string;
@@ -39,38 +43,63 @@ export class CourseDownloader {
 
     await fs.mkdir(this._coursesDir, { recursive: true });
 
-    const url = `https://github.com/${repo}/archive/refs/tags/v${version}.zip`;
     progress.report({ message: 'Downloading…', increment: 0 });
 
-    const zipBuffer = await this._fetchZip(url, progress); // reports 0–70
+    const gitAvailable = await this._isGitAvailable();
+    if (gitAvailable) {
+      await this._cloneRepo(repo, version, dest);
+    } else {
+      const url = `https://github.com/${repo}/archive/refs/tags/v${version}.zip`;
+      const zipBuffer = await this._fetchZip(url, progress); // reports 0–70
 
-    progress.report({ message: 'Extracting…', increment: 0 });
+      progress.report({ message: 'Extracting…', increment: 0 });
 
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'instrktr-'));
-    try {
-      await this._extractZip(zipBuffer, tmpDir);
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'instrktr-'));
+      try {
+        await this._extractZip(zipBuffer, tmpDir);
 
-      // Detect the actual top-level dir GitHub puts in the zip
-      const entries = await fs.readdir(tmpDir, { withFileTypes: true });
-      const topLevelDir = entries.find((e) => e.isDirectory());
-      if (!topLevelDir) {
-        throw new Error('Downloaded zip contained no top-level directory');
+        // Detect the actual top-level dir GitHub puts in the zip
+        const entries = await fs.readdir(tmpDir, { withFileTypes: true });
+        const topLevelDir = entries.find((e) => e.isDirectory());
+        if (!topLevelDir) {
+          throw new Error('Downloaded zip contained no top-level directory');
+        }
+        const topLevel = path.join(tmpDir, topLevelDir.name);
+
+        await fs.rm(dest, { recursive: true, force: true });
+        await fs.rename(topLevel, dest);
+      } finally {
+        await fs.rm(tmpDir, { recursive: true, force: true });
       }
-      const topLevel = path.join(tmpDir, topLevelDir.name);
-
-      await fs.rm(dest, { recursive: true, force: true });
-      await fs.rename(topLevel, dest);
-    } finally {
-      await fs.rm(tmpDir, { recursive: true, force: true });
     }
 
-    progress.report({ message: 'Done', increment: 30 }); // 70 + 30 = 100
+    progress.report({ message: 'Done', increment: 100 });
     return dest;
   }
 
   async uninstall(courseId: string, version: string): Promise<void> {
     const dir = this.courseDir(courseId, version);
     await fs.rm(dir, { recursive: true, force: true });
+  }
+
+  private async _isGitAvailable(): Promise<boolean> {
+    try {
+      await execFileAsync('git', ['--version']);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async _cloneRepo(repo: string, version: string, dest: string): Promise<void> {
+    // repo is already validated as "org/repo" by RegistryFetcher
+    const url = `https://github.com/${repo}.git`;
+    await fs.rm(dest, { recursive: true, force: true });
+    await execFileAsync('git', [
+      'clone', '--depth', '1', '--branch', `v${version}`, url, dest,
+    ]);
+    // Remove .git dir: prevents hook execution, hides credentials, saves disk
+    await fs.rm(path.join(dest, '.git'), { recursive: true, force: true });
   }
 
   private async _fetchZip(
