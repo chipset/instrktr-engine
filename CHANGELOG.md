@@ -1,6 +1,43 @@
 # Changelog
 
-## [0.3.5] — 2026-04-24
+## [0.3.8] — 2026-04-26
+
+### Added
+- Courses are now downloaded via `git clone --depth 1` when git is available on PATH — faster and more efficient for large courses
+- `.git/` directory is removed immediately after clone to prevent hook execution and credential leakage
+- Falls back to the existing ZIP download path when git is not installed
+
+### Security
+- `registry.json` entries with a malformed `repo` field (not strictly `org/repo`) are now rejected at parse time, blocking injection at the source
+
+---
+
+## [0.3.7] — 2026-04-26
+
+### Security
+- Fixed path-traversal bypass in ValidatorContext and PanelProvider: `startsWith(root)` check now requires a path separator after the prefix, preventing a workspace path of `/home/user/project` from being bypassed by `/home/user/project-evil/file`
+- Fixed ZIP path traversal (zip-slip): each entry path is now resolved and checked against `destDir` before extraction
+- FileScaffolder now skips symlinks in `starter/` directories — a malicious course could previously use a symlink to read arbitrary files from the learner's system into the workspace
+- `installed-courses.json` is now validated on load; each entry's fields are confirmed to be strings before `courseDir` is trusted
+
+---
+
+## [0.3.6] — 2026-04-26
+
+### Added
+- Check button now has a 35-second client-side timeout — if the extension host crashes mid-check the button re-enables automatically instead of staying disabled forever
+- Validator-free steps (no `validator` field) now show **Next Step →** immediately instead of a "Check My Work" button that auto-passes
+- Hints section has a **✕** dismiss button so learners can close hints once they no longer need them
+- Solution comparison: when a step has multiple solution files, clicking **↕ Compare with Solution** shows a Quick Pick to choose which file to diff
+
+### Fixed
+- Semver engine version comparison was using JavaScript's string coercion (`<` on tuples) — `0.3.10` was incorrectly considered less than `0.3.9`. Fixed with explicit numeric comparison.
+- GistSync only searched the first page (100 gists) when looking for the progress gist — now paginates until all gists are checked
+- 404 detection in GistSync used fragile string matching; now uses a typed `GitHubApiError` class carrying the HTTP status code
+- HTML in rendered instructions is now sanitized via DOMParser before being set as `innerHTML` — strips `<script>` tags, `on*` event attributes, and `javascript:` hrefs
+
+---
+
 
 ### Added
 - Bash validator support (`validate.sh`) — runs from the course directory so learners cannot tamper with the script

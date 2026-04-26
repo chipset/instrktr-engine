@@ -190,11 +190,11 @@ The registry file referenced by `instrktr.registryUrl` must follow this schema:
 | `id` | ✓ | Unique slug — must match what you put in `instrktr.startupCourse` |
 | `title` | ✓ | Display name shown in the catalog |
 | `description` | ✓ | Short summary shown in the catalog |
-| `repo` | ✓ | GitHub repo in `org/repo` form — Instrktr downloads via the GitHub archive API |
+| `repo` | ✓ | GitHub repo in `org/repo` form — must match the pattern `owner/name` exactly |
 | `latestVersion` | ✓ | Semver string matching a git tag on the repo (e.g. `v1.0.0`) |
 | `tags` | | Array of strings used for display grouping |
 
-Instrktr downloads courses from:
+Instrktr downloads courses using `git clone --depth 1` when `git` is available, falling back to:
 ```
 https://github.com/{repo}/archive/refs/tags/v{latestVersion}.zip
 ```

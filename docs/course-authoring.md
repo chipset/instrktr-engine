@@ -87,6 +87,7 @@ Files in the `starter/` folder are copied into the workspace root when a learner
 - Subdirectory structure is preserved: `starter/src/index.js` → workspace `src/index.js`
 - If a file already exists (learner has modified it), it is skipped and the learner is notified
 - If no `starter` is set, the workspace is left as-is from the previous step
+- Symlinks inside `starter/` are skipped and never followed — do not use symlinks to reference shared assets
 
 ---
 
@@ -224,7 +225,9 @@ Each entry maps an old step ID (from the version listed) to the new step ID. Lea
 }
 ```
 
-Instrktr downloads courses from:
+The `repo` field must be exactly `owner/name` — no protocol prefix, no `.git` suffix, no slashes within each segment.
+
+Instrktr downloads courses using `git clone --depth 1 --branch v{version}` when `git` is available, then removes the `.git` directory. If git is not installed, it falls back to:
 ```
 https://github.com/{repo}/archive/refs/tags/v{latestVersion}.zip
 ```
