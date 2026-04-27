@@ -74,4 +74,13 @@ describe('ValidatorContext env.get', () => {
     expect(ctx.env.get('TEST_VAR_XYZ')).toBe('hello');
     delete process.env['TEST_VAR_XYZ'];
   });
+
+  it('blocks credential-like variable names', () => {
+    const ctx = buildContext(workspaceRoot as never, terminalStub);
+    expect(ctx.env.get('GITHUB_TOKEN')).toBeUndefined();
+    expect(ctx.env.get('AWS_SECRET_ACCESS_KEY')).toBeUndefined();
+    expect(ctx.env.get('DB_PASSWORD')).toBeUndefined();
+    expect(ctx.env.get('MY_API_KEY')).toBeUndefined();
+    expect(ctx.env.get('SSH_PRIVATE_KEY')).toBeUndefined();
+  });
 });

@@ -11,6 +11,9 @@ export class FileScaffolder {
 
     for (const entry of entries) {
       const relative = path.relative(starterDir, entry);
+      // Defensive: path.relative() can return '../…' if entry escapes starterDir.
+      // _readDirRecursive skips symlinks so this shouldn't happen, but guard anyway.
+      if (relative.startsWith('..')) { continue; }
       const dest = vscode.Uri.joinPath(this._workspaceRoot, relative);
 
       // Don't overwrite files the learner has already modified

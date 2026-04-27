@@ -49,7 +49,7 @@ function renderCatalog(courses) {
     if (course.badge === 'installed') {
       badgeHtml = `<span class="badge badge-installed">Installed</span>`;
     } else if (course.badge === 'update') {
-      badgeHtml = `<span class="badge badge-update">Update v${course.latestVersion}</span>`;
+      badgeHtml = `<span class="badge badge-update">Update v${esc(course.latestVersion)}</span>`;
     }
 
     const tagsHtml = (course.tags ?? [])

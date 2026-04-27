@@ -75,6 +75,17 @@ export function buildContext(
     terminal,
     env: {
       get(name) {
+        // Block variables that commonly hold credentials, tokens, or secrets
+        // so a malicious validator cannot exfiltrate them.
+        const upper = name.toUpperCase();
+        if (
+          upper.includes('TOKEN') || upper.includes('SECRET') ||
+          upper.includes('PASSWORD') || upper.includes('PASSWD') ||
+          upper.includes('CREDENTIAL') || upper.includes('API_KEY') ||
+          upper.includes('PRIVATE_KEY') || upper.includes('ACCESS_KEY')
+        ) {
+          return undefined;
+        }
         return process.env[name];
       },
     },

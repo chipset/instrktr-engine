@@ -56,6 +56,15 @@ export class ValidatorRunner {
     }
 
     const courseDir = path.dirname(path.dirname(validatorPath)); // step dir → course dir
+
+    // Defense-in-depth: _safeCourseJoin in StepRunner is the primary guard, but
+    // re-validate here so _runBash is safe even if called from another code path.
+    const resolvedScript = path.resolve(validatorPath);
+    const resolvedCourseDir = path.resolve(courseDir);
+    if (!resolvedScript.startsWith(resolvedCourseDir + path.sep)) {
+      return { status: 'fail', message: 'Validator path is outside the course directory.' };
+    }
+
     const workspace = this._workspaceRoot.fsPath;
     const shell = process.env['SHELL'] ?? 'bash';
 
@@ -104,6 +113,8 @@ export class ValidatorRunner {
       const validatorDir = path.dirname(validatorPath);
 
       // Build a require that blocks dangerous built-in modules.
+      // cache is intentionally omitted — exposing require.cache would allow
+      // a validator to poison modules for subsequent require() calls.
       const safeRequire = Object.assign(
         (id: string) => {
           if (BLOCKED_MODULES.has(id)) {
@@ -113,7 +124,7 @@ export class ValidatorRunner {
           // eslint-disable-next-line @typescript-eslint/no-require-imports
           return require(resolved);
         },
-        { resolve: require.resolve, main: require.main, cache: require.cache },
+        { resolve: require.resolve, main: require.main },
       );
 
       const mod = { exports: {} as Record<string, unknown> };
