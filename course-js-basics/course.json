@@ -1,0 +1,113 @@
+{
+  "id": "js-basics",
+  "title": "JavaScript Fundamentals for DevOps",
+  "version": "1.0.0",
+  "engineVersion": ">=0.3.5",
+  "steps": [
+    {
+      "id": "variables",
+      "title": "Variables and Data Types",
+      "instructions": "steps/01-variables/instructions.md",
+      "validator": "steps/01-variables/validate.js",
+      "solution": "steps/01-variables/solution",
+      "hints": [
+        "Use `const` for values that never change and `let` for values that will be reassigned. Avoid `var`.",
+        "Template literals use backticks and `${expression}` to embed values: `` `Host: ${host}:${port}` ``"
+      ]
+    },
+    {
+      "id": "functions",
+      "title": "Functions and Arrow Functions",
+      "instructions": "steps/02-functions/instructions.md",
+      "validator": "steps/02-functions/validate.js",
+      "solution": "steps/02-functions/solution",
+      "hints": [
+        "A named function: `function greet(name) { return 'Hello ' + name; }`. An arrow function equivalent: `const greet = (name) => 'Hello ' + name;`",
+        "Both forms work identically for most purposes. Arrow functions are preferred for short callbacks; named functions are clearer for top-level definitions."
+      ]
+    },
+    {
+      "id": "objects",
+      "title": "Objects and Destructuring",
+      "instructions": "steps/03-objects/instructions.md",
+      "validator": "steps/03-objects/validate.js",
+      "starter": "steps/03-objects/starter",
+      "solution": "steps/03-objects/solution",
+      "hints": [
+        "Destructuring pulls named properties out of an object in one line: `const { host, port } = config;` — equivalent to `const host = config.host; const port = config.port;`",
+        "You can rename while destructuring: `const { stageNumber: stage } = config;` — the variable is named `stage` but reads `config.stageNumber`."
+      ]
+    },
+    {
+      "id": "arrays",
+      "title": "Arrays and Iteration",
+      "instructions": "steps/04-arrays/instructions.md",
+      "validator": "steps/04-arrays/validate.js",
+      "solution": "steps/04-arrays/solution",
+      "hints": [
+        "`forEach` runs a function for each item but returns nothing. `map` returns a new array of transformed items. `filter` returns a new array of items that pass a test. `find` returns the first matching item (or undefined).",
+        "All four take a callback: `elements.map(el => el.elmName)` returns an array of just the names."
+      ]
+    },
+    {
+      "id": "modules",
+      "title": "CommonJS Modules",
+      "instructions": "steps/05-modules/instructions.md",
+      "validator": "steps/05-modules/validate.js",
+      "starter": "steps/05-modules/starter",
+      "solution": "steps/05-modules/solution",
+      "hints": [
+        "Export with `module.exports = { functionName };` at the bottom of the file. Import with `const { functionName } = require('./filename');` — omit the `.js` extension.",
+        "You can export a single value (`module.exports = myFunction`) or an object of multiple exports (`module.exports = { fn1, fn2 }`)."
+      ]
+    },
+    {
+      "id": "classes",
+      "title": "Classes and the `this` Keyword",
+      "instructions": "steps/06-classes/instructions.md",
+      "validator": "steps/06-classes/validate.js",
+      "starter": "steps/06-classes/starter",
+      "solution": "steps/06-classes/solution",
+      "hints": [
+        "Inside a class method, `this` refers to the instance. Store constructor arguments on `this` so other methods can access them: `this.config = config;`",
+        "Methods are defined directly in the class body — no `function` keyword, no comma between methods: `class Foo { bar() { return 42; } }`"
+      ]
+    },
+    {
+      "id": "async-await",
+      "title": "Promises and async/await",
+      "instructions": "steps/07-async/instructions.md",
+      "validator": "steps/07-async/validate.js",
+      "starter": "steps/07-async/starter",
+      "solution": "steps/07-async/solution",
+      "hints": [
+        "Mark a function `async` and you can use `await` inside it. `await` pauses until the Promise resolves and gives you its value: `const result = await someAsyncCall();`",
+        "`util.promisify(fn)` wraps a Node.js callback-style function (last argument is `(err, result) => {}`) so it returns a Promise instead."
+      ]
+    },
+    {
+      "id": "error-handling",
+      "title": "Error Handling with try/catch",
+      "instructions": "steps/08-error-handling/instructions.md",
+      "validator": "steps/08-error-handling/validate.js",
+      "starter": "steps/08-error-handling/starter",
+      "solution": "steps/08-error-handling/solution",
+      "hints": [
+        "Wrap `await` calls in `try { ... } catch (err) { ... }` — errors from rejected Promises are caught just like synchronous throws.",
+        "Re-throw with context: `throw new Error('Failed to list elements: ' + err.message)` — the original error message is preserved but a clearer label is added."
+      ]
+    },
+    {
+      "id": "json",
+      "title": "Working with JSON",
+      "instructions": "steps/09-json/instructions.md",
+      "validator": "steps/09-json/validate.js",
+      "starter": "steps/09-json/starter",
+      "solution": "steps/09-json/solution",
+      "hints": [
+        "`JSON.parse(string)` converts a JSON string into a JavaScript object. `JSON.stringify(object)` does the reverse. Both throw on invalid input.",
+        "Zowe CLI returns JSON when passed `--rfj`. The response shape is `{ data: [...] }` — so `JSON.parse(stdout).data` gives you the element array."
+      ]
+    }
+  ]
+}
