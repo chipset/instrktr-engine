@@ -8,10 +8,12 @@ import { FileWatcher, TerminalAPI } from '../context/ValidatorContext';
 import { ValidatorRunner } from './ValidatorRunner';
 import { CourseLoader } from './CourseLoader';
 import { ProgressStore } from './ProgressStore';
+import { CourseWorkspaceManager } from './CourseWorkspaceManager';
 
 export class StepRunner {
   private _course?: CourseDef;
   private _courseDir?: string;
+  private _workspaceRoot: vscode.Uri;
   private _stepIndex = 0;
   private _completedSteps: number[] = [];
   private _navigating = false;
@@ -28,12 +30,14 @@ export class StepRunner {
   private _loader = new CourseLoader();
 
   constructor(
-    private readonly _workspaceRoot: vscode.Uri,
+    initialWorkspaceRoot: vscode.Uri,
     private readonly _progress: ProgressStore,
+    private readonly _workspaces: CourseWorkspaceManager,
   ) {
-    this._scaffolder = new FileScaffolder(_workspaceRoot);
-    this._terminal = ValidatorRunner.buildTerminalAPI(_workspaceRoot);
-    this._validatorRunner = new ValidatorRunner(_workspaceRoot);
+    this._workspaceRoot = initialWorkspaceRoot;
+    this._scaffolder = new FileScaffolder(initialWorkspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(initialWorkspaceRoot);
+    this._validatorRunner = new ValidatorRunner(initialWorkspaceRoot);
   }
 
   setTerminalAPI(api: TerminalAPI) {
@@ -54,6 +58,10 @@ export class StepRunner {
   async loadCourse(courseDir: string, devMode = false): Promise<void> {
     this._course = await this._loader.load(courseDir);
     this._courseDir = courseDir;
+    this._workspaceRoot = await this._workspaces.prepare(courseDir);
+    this._scaffolder = new FileScaffolder(this._workspaceRoot);
+    this._validatorRunner = new ValidatorRunner(this._workspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(this._workspaceRoot);
     this._fileWatcher.watch(this._workspaceRoot);
 
     // Dev mode: watch the course folder itself and re-render on any change

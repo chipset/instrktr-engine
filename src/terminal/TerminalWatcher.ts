@@ -24,12 +24,26 @@ function parseCommand(command: string): string[] {
 const execFileAsync = promisify(execFile);
 
 export class TerminalWatcher implements vscode.Disposable {
+  private _workspaceRoot: vscode.Uri;
   private _terminal?: vscode.Terminal;
   private _lastCommand = '';
   private _lastOutput = '';
   private _disposables: vscode.Disposable[] = [];
 
-  constructor(private readonly _workspaceRoot: vscode.Uri) {}
+  constructor(workspaceRoot: vscode.Uri) {
+    this._workspaceRoot = workspaceRoot;
+  }
+
+  setWorkspaceRoot(workspaceRoot: vscode.Uri) {
+    if (workspaceRoot.fsPath === this._workspaceRoot.fsPath) { return; }
+    this._workspaceRoot = workspaceRoot;
+    this._lastCommand = '';
+    this._lastOutput = '';
+    if (this._terminal) {
+      this._terminal.dispose();
+      this._terminal = undefined;
+    }
+  }
 
   /**
    * Creates (or reuses) the named Instrktr terminal and starts listening

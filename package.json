@@ -3,7 +3,7 @@
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
   "version": "0.3.9",
-  "publisher": "instrktr",
+  "publisher": "TMcQ",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e2a3a",
@@ -50,6 +50,10 @@
       {
         "command": "instrktr.openLocalCourse",
         "title": "Instrktr: Open Local Course Folder"
+      },
+      {
+        "command": "instrktr.startCourse",
+        "title": "Instrktr: Start Course"
       },
       {
         "command": "instrktr.browseCourses",
