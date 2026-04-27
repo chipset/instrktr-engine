@@ -45,9 +45,10 @@ export class MigrationRunner {
   ): (oldIndex: number) => number | null {
     const table = newCourse.migration?.[oldVersion];
 
-    if (table) {
-      // Positional: entry at index N maps old step N → new step id
-      const entries = Object.values(table); // [ "new-id-for-old-0", "new-id-for-old-1", ... ]
+    if (table && typeof table === 'object') {
+      // Positional: entry at index N maps old step N → new step id.
+      // Filter to strings only — a malicious course.json could supply other types.
+      const entries = Object.values(table).filter((v): v is string => typeof v === 'string');
       return (oldIndex) => {
         const newId = entries[oldIndex];
         if (!newId) { return null; }

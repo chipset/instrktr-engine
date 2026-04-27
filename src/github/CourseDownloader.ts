@@ -95,11 +95,16 @@ export class CourseDownloader {
     // repo is already validated as "org/repo" by RegistryFetcher
     const url = `https://github.com/${repo}.git`;
     await fs.rm(dest, { recursive: true, force: true });
-    await execFileAsync('git', [
-      'clone', '--depth', '1', '--branch', `v${version}`, url, dest,
-    ]);
-    // Remove .git dir: prevents hook execution, hides credentials, saves disk
-    await fs.rm(path.join(dest, '.git'), { recursive: true, force: true });
+    try {
+      await execFileAsync('git', [
+        'clone', '--depth', '1', '--branch', `v${version}`, url, dest,
+      ]);
+    } finally {
+      // Always remove .git, even if the clone failed partway through.
+      // Otherwise a partial clone could leave hooks/config behind that a
+      // later git command in the dir would execute.
+      await fs.rm(path.join(dest, '.git'), { recursive: true, force: true });
+    }
   }
 
   private async _fetchZip(

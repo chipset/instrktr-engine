@@ -75,14 +75,19 @@ export function buildContext(
     terminal,
     env: {
       get(name) {
-        // Block variables that commonly hold credentials, tokens, or secrets
-        // so a malicious validator cannot exfiltrate them.
+        // Block variables that commonly hold credentials, tokens, or secrets.
+        // Substring match, so e.g. ZOWE_OPT_PASSWORD is blocked too.
+        // This is best-effort — env.get is documented as not a security boundary.
         const upper = name.toUpperCase();
         if (
           upper.includes('TOKEN') || upper.includes('SECRET') ||
           upper.includes('PASSWORD') || upper.includes('PASSWD') ||
           upper.includes('CREDENTIAL') || upper.includes('API_KEY') ||
-          upper.includes('PRIVATE_KEY') || upper.includes('ACCESS_KEY')
+          upper.includes('PRIVATE_KEY') || upper.includes('ACCESS_KEY') ||
+          upper.includes('OAUTH') || upper.includes('BEARER') ||
+          upper.includes('KUBECONFIG') || upper.includes('SSH_AUTH_SOCK') ||
+          upper.includes('SESSION_ID') || upper.includes('COOKIE') ||
+          upper.startsWith('AUTH_') || upper.endsWith('_AUTH')
         ) {
           return undefined;
         }

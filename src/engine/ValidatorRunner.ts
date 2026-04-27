@@ -8,13 +8,22 @@ import { CheckResult, ExecError } from './types';
 import { buildContext, TerminalAPI } from '../context/ValidatorContext';
 
 // Modules a course validator must never be able to load.
+// Critical: 'module' exposes Module._load which bypasses safeRequire entirely.
+// Critical: 'vm' lets a validator run unrestricted code in a new context.
 const BLOCKED_MODULES = new Set([
   'child_process', 'cluster', 'dgram', 'dns',
   'fs', 'fs/promises', 'node:fs', 'node:fs/promises',
   'http', 'http2', 'https', 'net',
-  'node:child_process', 'node:http', 'node:http2', 'node:https', 'node:net',
+  'node:child_process', 'node:cluster', 'node:dgram', 'node:dns',
+  'node:http', 'node:http2', 'node:https', 'node:net',
+  'inspector', 'node:inspector',
+  'module', 'node:module',
+  'os', 'node:os',
   'readline', 'tls', 'worker_threads',
   'node:readline', 'node:tls', 'node:worker_threads',
+  'repl', 'node:repl',
+  'v8', 'node:v8',
+  'vm', 'node:vm',
 ]);
 
 const execFileAsync = promisify(execFile);

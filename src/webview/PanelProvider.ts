@@ -72,6 +72,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'jumpToStep':
+          if (typeof message.index !== 'number' || !Number.isInteger(message.index)) { break; }
           await this._runner.jumpToStep(message.index);
           break;
 
@@ -95,6 +96,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           break;
 
         case 'openFile': {
+          if (typeof message.path !== 'string') { break; }
           const root = this._runner.workspaceRoot.fsPath;
           const resolved = path.resolve(root, message.path);
           if (resolved !== root && !resolved.startsWith(root + path.sep)) { break; } // block path traversal
