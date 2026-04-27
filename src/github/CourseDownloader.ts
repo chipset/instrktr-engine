@@ -17,7 +17,12 @@ export class CourseDownloader {
   }
 
   courseDir(courseId: string, version: string): string {
-    return path.join(this._coursesDir, `${courseId}@${version}`);
+    const dest = path.resolve(this._coursesDir, `${courseId}@${version}`);
+    const safeBase = path.resolve(this._coursesDir);
+    if (dest !== safeBase && !dest.startsWith(safeBase + path.sep)) {
+      throw new Error('Course path escapes the courses directory.');
+    }
+    return dest;
   }
 
   isDownloaded(courseId: string, version: string): boolean {

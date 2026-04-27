@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as vm from 'vm';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -25,9 +25,19 @@ const BLOCKED_MODULES = new Set([
   'v8', 'node:v8',
   'vm', 'node:vm',
 ]);
+const ALLOWED_MODULES = new Set([
+  'assert', 'node:assert',
+  'path', 'node:path',
+  'url', 'node:url',
+  'util', 'node:util',
+]);
 
 const execFileAsync = promisify(execFile);
 const VALIDATOR_TIMEOUT_MS = 30_000;
+
+interface SandboxModule {
+  exports: unknown;
+}
 
 /** Split a command string into [cmd, ...args] honouring single- and double-quoted tokens. */
 function parseCommand(command: string): string[] {
@@ -118,32 +128,12 @@ export class ValidatorRunner {
   private async _runJs(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
     try {
-      const src = await fs.readFile(validatorPath, 'utf8');
-      const validatorDir = path.dirname(validatorPath);
-
-      // Build a require that blocks dangerous built-in modules.
-      // cache is intentionally omitted — exposing require.cache would allow
-      // a validator to poison modules for subsequent require() calls.
-      const safeRequire = Object.assign(
-        (id: string) => {
-          if (BLOCKED_MODULES.has(id)) {
-            throw new Error(`Validator cannot require('${id}') — blocked for security.`);
-          }
-          const resolved = id.startsWith('.') ? path.resolve(validatorDir, id) : id;
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          return require(resolved);
-        },
-        { resolve: require.resolve, main: require.main },
+      const courseDir = path.dirname(path.dirname(validatorPath));
+      const mod = this._loadSandboxModule(
+        path.resolve(validatorPath),
+        path.resolve(courseDir),
+        new Map<string, SandboxModule>(),
       );
-
-      const mod = { exports: {} as Record<string, unknown> };
-      // vm.runInThisContext gives the script the current global (process, Buffer, etc.)
-      // but injects our safeRequire so the module-level require is intercepted.
-      const wrapper = vm.runInThisContext(
-        `(function(require, module, exports, __filename, __dirname) { ${src}\n })`,
-        { filename: validatorPath },
-      );
-      wrapper(safeRequire, mod, mod.exports, validatorPath, validatorDir);
       fn = mod.exports as typeof fn;
     } catch (err) {
       return { status: 'fail', message: `Could not load validator: ${err}` };
@@ -162,6 +152,121 @@ export class ValidatorRunner {
     } catch (err) {
       return { status: 'fail', message: String(err) };
     }
+  }
+
+  private _loadSandboxModule(
+    modulePath: string,
+    courseDir: string,
+    cache: Map<string, SandboxModule>,
+  ): SandboxModule {
+    const resolvedPath = this._resolveSandboxModulePath(modulePath, courseDir);
+    const cached = cache.get(resolvedPath);
+    if (cached) { return cached; }
+
+    const mod: SandboxModule = { exports: {} };
+    cache.set(resolvedPath, mod);
+
+    if (resolvedPath.endsWith('.json')) {
+      mod.exports = JSON.parse(fsSync.readFileSync(resolvedPath, 'utf8')) as unknown;
+      return mod;
+    }
+
+    const src = fsSync.readFileSync(resolvedPath, 'utf8');
+    const moduleDir = path.dirname(resolvedPath);
+    const sandboxRequire = this._buildSandboxRequire(moduleDir, courseDir, cache);
+    const sandbox = Object.create(null) as Record<string, unknown>;
+    sandbox.console = console;
+    sandbox.module = mod;
+    sandbox.exports = mod.exports;
+    sandbox.require = sandboxRequire;
+    sandbox.__filename = resolvedPath;
+    sandbox.__dirname = moduleDir;
+    sandbox.setTimeout = setTimeout;
+    sandbox.clearTimeout = clearTimeout;
+    sandbox.setInterval = setInterval;
+    sandbox.clearInterval = clearInterval;
+    sandbox.TextEncoder = TextEncoder;
+    sandbox.TextDecoder = TextDecoder;
+    const context = vm.createContext(sandbox);
+
+    const wrapper = new vm.Script(
+      `(function(require, module, exports, __filename, __dirname) { 'use strict'; ${src}\n })`,
+      { filename: resolvedPath },
+    );
+    const fn = wrapper.runInContext(context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+      require: (id: string) => unknown,
+      module: SandboxModule,
+      exports: unknown,
+      __filename: string,
+      __dirname: string,
+    ) => void;
+    fn(sandboxRequire, mod, mod.exports, resolvedPath, moduleDir);
+    return mod;
+  }
+
+  private _buildSandboxRequire(
+    moduleDir: string,
+    courseDir: string,
+    cache: Map<string, SandboxModule>,
+  ) {
+    const requireFn = (id: string) => {
+      if (BLOCKED_MODULES.has(id)) {
+        throw new Error(`Validator cannot require('${id}') — blocked for security.`);
+      }
+      if (ALLOWED_MODULES.has(id)) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        return require(id);
+      }
+      if (!id.startsWith('.')) {
+        throw new Error(`Validator cannot require('${id}') — only safe built-ins and relative files are allowed.`);
+      }
+
+      const candidate = path.resolve(moduleDir, id);
+      const resolved = this._resolveModuleCandidate(candidate, courseDir);
+      return this._loadSandboxModule(resolved, courseDir, cache).exports;
+    };
+
+    Object.defineProperty(requireFn, 'resolve', {
+      value: (id: string) => {
+        if (!id.startsWith('.')) {
+          throw new Error(`Validator cannot resolve('${id}') — only relative files are allowed.`);
+        }
+        return this._resolveModuleCandidate(path.resolve(moduleDir, id), courseDir);
+      },
+    });
+
+    return requireFn;
+  }
+
+  private _resolveModuleCandidate(candidate: string, courseDir: string): string {
+    const courseRoot = path.resolve(courseDir);
+    const probes = [
+      candidate,
+      `${candidate}.js`,
+      `${candidate}.json`,
+      path.join(candidate, 'index.js'),
+      path.join(candidate, 'index.json'),
+    ].map((p) => path.resolve(p));
+
+    for (const probe of probes) {
+      if (probe !== courseRoot && !probe.startsWith(courseRoot + path.sep)) {
+        continue;
+      }
+      try {
+        const stat = fsSync.statSync(probe);
+        if (stat.isFile()) {
+          return probe;
+        }
+      } catch {
+        // try the next probe
+      }
+    }
+
+    throw new Error(`Validator module "${candidate}" could not be resolved inside the course directory.`);
+  }
+
+  private _resolveSandboxModulePath(modulePath: string, courseDir: string): string {
+    return this._resolveModuleCandidate(modulePath, courseDir);
   }
 
   static buildTerminalAPI(workspaceRoot: vscode.Uri): TerminalAPI {

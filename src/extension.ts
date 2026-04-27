@@ -31,7 +31,7 @@ export async function activate(context: vscode.ExtensionContext) {
   await Promise.all([installed.load(), progressStore.load(), auth.loadSilent()]);
 
   // Pull Gist on startup if already signed in
-  const initialToken = auth.state.token;
+  const initialToken = auth.accessToken;
   if (initialToken) {
     gistSync.pull(initialToken, progressStore.all()).then((merged) => {
       if (merged) { progressStore.applyMerge(merged); }
@@ -40,8 +40,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Pull Gist whenever the user signs in
   auth.onDidChangeState(async (authState) => {
-    if (authState.signedIn && authState.token) {
-      const merged = await gistSync.pull(authState.token, progressStore.all());
+    const token = auth.accessToken;
+    if (authState.signedIn && token) {
+      const merged = await gistSync.pull(token, progressStore.all());
       if (merged) { await progressStore.applyMerge(merged); }
     }
   });
@@ -62,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   runner.onStepPass(() => {
-    const token = auth.state.token;
+    const token = auth.accessToken;
     if (token) { gistSync.debouncedPush(token, progressStore.all()); }
   });
 

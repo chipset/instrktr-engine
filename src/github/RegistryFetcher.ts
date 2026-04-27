@@ -5,6 +5,8 @@ import { logError } from '../logger';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_FILE = 'registry-cache.json';
 const REGISTRY_FETCH_TIMEOUT_MS = 10_000;
+const SAFE_COURSE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const SAFE_VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+_-]*$/;
 
 export class RegistryFetcher {
   constructor(private readonly _storageUri: vscode.Uri) {}
@@ -84,8 +86,14 @@ export class RegistryFetcher {
           throw new Error(`Registry course[${i}] missing required field: "${field}"`);
         }
       }
+      if (!SAFE_COURSE_ID_RE.test(course.id)) {
+        throw new Error(`Registry course[${i}] has invalid id: "${course.id}"`);
+      }
       if (!/^[\w.\-]+\/[\w.\-]+$/.test(course.repo)) {
         throw new Error(`Registry course[${i}] has invalid repo format: "${course.repo}" (expected "org/repo")`);
+      }
+      if (!SAFE_VERSION_RE.test(course.latestVersion)) {
+        throw new Error(`Registry course[${i}] has invalid latestVersion: "${course.latestVersion}"`);
       }
     }
 
