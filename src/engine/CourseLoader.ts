@@ -12,6 +12,69 @@ function semverLessThan(a: [number, number, number], b: [number, number, number]
 const REQUIRED_COURSE_FIELDS: (keyof CourseDef)[] = ['id', 'title', 'version', 'engineVersion', 'steps'];
 const REQUIRED_STEP_FIELDS: (keyof StepDef)[] = ['id', 'title', 'instructions'];
 
+/** Reserved ID for the trust-and-sandbox step injected at load time. */
+export const TRUST_STEP_ID = '__instrktr_trust_ack__';
+
+const TRUST_STEP_INSTRUCTIONS = `# Before You Begin: Verify and Sandbox
+
+Instrktr courses can run code on your machine. Before continuing, please understand
+what you're agreeing to and consider how to run this safely.
+
+## What this course can do
+
+When you advance through steps, the course can:
+
+- **Run scripts.** Validators (\`validate.js\` or \`validate.sh\`) execute as your user.
+- **Read and write files** in your VS Code workspace folder.
+- **Run shell commands** through \`context.terminal.run\`.
+- **Read certain environment variables** (Instrktr blocks names that look like
+  credentials, but the filter is best-effort).
+
+The Instrktr extension restricts the most dangerous Node.js modules and scrubs
+credential-style env variables, but a course validator is **not** fully sandboxed.
+
+## Only run courses from trusted sources
+
+Before continuing, please:
+
+1. **Confirm the registry source.** You should know and trust who publishes this
+   registry — the URL is set in your Instrktr settings.
+2. **Review the course manifest.** Open \`course.json\` and inspect the steps,
+   validators, and starter files.
+3. **Check the version and author.** Match them against what you expected.
+
+If anything looks unfamiliar, **do not proceed**. Uninstall the course and report
+it to your administrator or the registry maintainer.
+
+## The safest way: a sandboxed environment
+
+For real isolation, run interactive courses in an environment dedicated to training
+so any unintended action is contained:
+
+- **GitHub Codespaces** — a disposable cloud dev environment per course.
+- **VS Code Dev Containers** — an isolated Docker container scoped to the course.
+- **A virtual machine** (UTM, VirtualBox, multipass, or a cloud VM you can destroy).
+- **A dedicated OS user** on your machine, with no access to your real files,
+  SSH keys, or stored credentials.
+
+In any of these, the worst a course can do is destroy the sandbox itself.
+
+## Acknowledge
+
+When you have reviewed the course and chosen an appropriate environment, click
+**Check Work** to acknowledge and continue to step 1.
+`;
+
+const TRUST_STEP: StepDef = {
+  id: TRUST_STEP_ID,
+  title: 'Before You Begin: Verify and Sandbox',
+  instructions: TRUST_STEP_INSTRUCTIONS,
+  hints: [
+    'Open course.json and any validate.js scripts in a separate VS Code window to inspect them before continuing.',
+    'GitHub Codespaces or a Dev Container give you an isolated environment with one click — use it whenever you don\'t fully trust the source.',
+  ],
+};
+
 export class CourseLoader {
   async load(courseDir: string): Promise<CourseDef> {
     const manifestPath = path.join(courseDir, 'course.json');
@@ -36,6 +99,13 @@ export class CourseLoader {
 
     for (let i = 0; i < course.steps.length; i++) {
       this._validateStep(course.steps[i], i);
+    }
+
+    // Always prepend the trust-and-sandbox acknowledgment step. It can't be
+    // suppressed by a course author — every learner must opt in to running
+    // course code before any other step is shown.
+    if (course.steps[0]?.id !== TRUST_STEP_ID) {
+      course.steps = [TRUST_STEP, ...course.steps];
     }
 
     return course;

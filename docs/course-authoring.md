@@ -57,6 +57,8 @@ course-my-topic/
 | `starter` | | Path to a folder whose contents are copied into the workspace when the step begins |
 | `solution` | | Path to a folder with reference files. Shown as a diff when a check fails or warns |
 
+> **Reserved step ID.** Instrktr automatically prepends a built-in trust-and-sandbox acknowledgment step (ID `__instrktr_trust_ack__`) at index 0 of every loaded course. Do not author a step with that ID — it will be ignored. Your steps are presented to learners starting at index 1.
+
 ---
 
 ## Writing Instructions

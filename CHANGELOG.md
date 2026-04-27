@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.9] — 2026-04-27
+
+### Added
+- **Mandatory trust-and-sandbox acknowledgment step** — every course now begins with a built-in step 0 that explains what course code can do, asks the learner to verify they trust the source and have reviewed the manifest, and recommends running the course in a sandboxed environment (Codespaces, Dev Containers, a VM, or a dedicated user account). The step is injected by the loader and cannot be removed by a course author. Course authors should not use the reserved step ID `__instrktr_trust_ack__`.
+
+### Notes for upgraders
+- Existing learner progress saved before this release used pre-injection step indices. On the next launch, the trust step appears at index 0 and the user's previously stored `currentStep` may be off by one. Use **Next Step →** to navigate to the correct position; previously completed work is preserved on disk.
+
+### Security
+- Closes the residual hardening items from the third-pass audit:
+  - Expanded `BLOCKED_MODULES` to include `module`, `vm`, `os`, `inspector`, `repl`, `v8`, and their `node:` forms — `node:module` was the most important addition, since it exposes `Module._load` which would have bypassed `safeRequire`
+  - Extended the `ValidatorContext.env.get` blocklist with `OAUTH`, `BEARER`, `KUBECONFIG`, `SSH_AUTH_SOCK`, `SESSION_ID`, `COOKIE`, `AUTH_*`, and `*_AUTH`
+  - `.git/` cleanup after `git clone` now runs in a `finally` block so a partial clone cannot leave hooks behind
+  - Type-check `message.path` and `message.index` on webview messages before passing to filesystem / runner
+  - `MigrationRunner` filters migration table values to strings only
+
+---
+
 ## [0.3.8] — 2026-04-26
 
 ### Added

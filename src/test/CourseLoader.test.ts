@@ -38,10 +38,26 @@ describe('CourseLoader', () => {
     );
   });
 
-  it('loads a valid manifest', async () => {
+  it('loads a valid manifest and prepends the trust acknowledgment step', async () => {
     const course = await loader.load('/some/course');
     expect(course.id).toBe('test');
-    expect(course.steps).toHaveLength(1);
+    // Trust step + 1 original step
+    expect(course.steps).toHaveLength(2);
+    expect(course.steps[0].id).toBe('__instrktr_trust_ack__');
+    expect(course.steps[1].id).toBe('step-1');
+  });
+
+  it('does not double-prepend the trust step on a course that already starts with it', async () => {
+    mockReadFile({
+      ...validManifest,
+      steps: [
+        { id: '__instrktr_trust_ack__', title: 'Trust', instructions: 'x', hints: [] },
+        { id: 'step-1', title: 'Step 1', instructions: 'step1.md', hints: [] },
+      ],
+    });
+    const course = await loader.load('/some/course');
+    expect(course.steps).toHaveLength(2);
+    expect(course.steps[0].id).toBe('__instrktr_trust_ack__');
   });
 
   it('throws when course.json is missing', async () => {
