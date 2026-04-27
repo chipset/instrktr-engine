@@ -98,7 +98,7 @@ export class StepRunner {
     if (!step?.validator) {
       return { status: 'pass', message: 'Step complete!' };
     }
-    const validatorPath = path.join(this._courseDir, step.validator);
+    const validatorPath = this._safeCourseJoin(this._courseDir, step.validator);
     const result = await this._validatorRunner.run(validatorPath, this._terminal, this._stepIndex);
 
     if (result.status === 'pass') {
@@ -180,7 +180,17 @@ export class StepRunner {
   currentStepSolutionDir(): string | undefined {
     const step = this._currentStep();
     if (!step?.solution || !this._courseDir) { return undefined; }
-    return path.join(this._courseDir, step.solution);
+    try {
+      return this._safeCourseJoin(this._courseDir, step.solution);
+    } catch { return undefined; }
+  }
+
+  private _safeCourseJoin(courseDir: string, subpath: string): string {
+    const resolved = path.resolve(courseDir, subpath);
+    if (resolved !== courseDir && !resolved.startsWith(courseDir + path.sep)) {
+      throw new Error(`Course path "${subpath}" escapes the course directory.`);
+    }
+    return resolved;
   }
 
   dispose() {
@@ -199,29 +209,29 @@ export class StepRunner {
     if (!step || !this._courseDir) { return; }
 
     if (step.starter) {
-      const starterDir = path.join(this._courseDir, step.starter);
       try {
+        const starterDir = this._safeCourseJoin(this._courseDir, step.starter);
         await this._scaffolder.scaffold(starterDir);
       } catch {
-        // starter dir is optional
+        // starter dir is optional or path traversal attempt — skip silently
       }
     }
 
-    const instructionsPath = path.join(this._courseDir, step.instructions);
-    let md = '';
+    let md = step.instructions;
     try {
+      const instructionsPath = this._safeCourseJoin(this._courseDir, step.instructions);
       md = await fs.readFile(instructionsPath, 'utf8');
     } catch {
-      md = step.instructions;
+      // file not found or path traversal — fall back to literal value
     }
     const instructionsHtml = await marked(md);
 
     let hasSolution = false;
     if (step.solution) {
       try {
-        await fs.access(path.join(this._courseDir, step.solution));
+        await fs.access(this._safeCourseJoin(this._courseDir, step.solution));
         hasSolution = true;
-      } catch { /* solution dir is optional */ }
+      } catch { /* solution dir is optional or path traversal attempt */ }
     }
 
     this._onStateChange.fire({

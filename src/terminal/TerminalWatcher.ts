@@ -4,6 +4,23 @@ import { ExecError } from '../engine/types';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
+/** Split a command string into [cmd, ...args] honouring single- and double-quoted tokens. */
+function parseCommand(command: string): string[] {
+  const args: string[] = [];
+  let current = '';
+  let inSingle = false;
+  let inDouble = false;
+  for (const ch of command.trim()) {
+    if (ch === "'" && !inDouble) { inSingle = !inSingle; }
+    else if (ch === '"' && !inSingle) { inDouble = !inDouble; }
+    else if (ch === ' ' && !inSingle && !inDouble) {
+      if (current) { args.push(current); current = ''; }
+    } else { current += ch; }
+  }
+  if (current) { args.push(current); }
+  return args;
+}
+
 const execFileAsync = promisify(execFile);
 
 export class TerminalWatcher implements vscode.Disposable {
@@ -60,7 +77,7 @@ export class TerminalWatcher implements vscode.Disposable {
 
       async run(command: string) {
         try {
-          const [cmd, ...args] = command.split(/\s+/);
+          const [cmd, ...args] = parseCommand(command);
           const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });
           return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
         } catch (err: unknown) {
