@@ -64,18 +64,13 @@ export class TerminalWatcher implements vscode.Disposable {
   /** Build the TerminalAPI object to pass into ValidatorContext. */
   buildAPI(): TerminalAPI {
     const cwd = this._workspaceRoot.fsPath;
-    const self = this;
 
     return {
-      async lastCommand() {
-        return self._lastCommand;
-      },
+      lastCommand: async () => this._lastCommand,
 
-      async outputContains(text: string) {
-        return self._lastOutput.includes(text);
-      },
+      outputContains: async (text: string) => this._lastOutput.includes(text),
 
-      async run(command: string) {
+      run: async (command: string) => {
         try {
           const [cmd, ...args] = parseCommand(command);
           const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });

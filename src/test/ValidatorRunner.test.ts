@@ -57,6 +57,36 @@ describe('ValidatorRunner JS sandbox', () => {
     });
   });
 
+  it('does not allow host-function constructor escapes through validator APIs', async () => {
+    const { root, validatorPath } = await makeValidator({
+      'validate.js': `
+        module.exports = async function validate(context) {
+          const probes = [
+            () => require.constructor('return typeof process')(),
+            () => context.pass.constructor('return typeof process')(),
+            () => context.files.read.constructor('return typeof process')(),
+            () => context.terminal.run.constructor('return typeof process')(),
+          ];
+          for (const probe of probes) {
+            try {
+              if (probe() !== 'undefined') {
+                return context.fail('sandbox escape detected');
+              }
+            } catch {}
+          }
+          return context.pass('sealed');
+        };
+      `,
+    });
+    cleanup.push(root);
+
+    const runner = new ValidatorRunner(Uri.file('/workspace') as never);
+    await expect(runner.run(validatorPath, terminalStub, 0)).resolves.toEqual({
+      status: 'pass',
+      message: 'sealed',
+    });
+  });
+
   it('loads relative helper modules inside the same sandbox', async () => {
     const { root, validatorPath } = await makeValidator({
       'validate.js': `

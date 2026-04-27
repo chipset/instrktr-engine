@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { PanelProvider } from './webview/PanelProvider';
 import { CatalogProvider } from './webview/CatalogProvider';
 import { StepRunner } from './engine/StepRunner';

@@ -56,19 +56,16 @@ function renderCatalog(courses) {
       .map((t) => `<span class="tag">${esc(t)}</span>`)
       .join('');
 
-    let actionsHtml = '';
-    if (course.badge === 'none') {
-      actionsHtml = `<button class="btn btn-primary btn-sm" data-action="install" data-id="${esc(course.id)}">Install</button>`;
-    } else if (course.badge === 'update') {
-      actionsHtml = `
+    const actionsHtml = course.badge === 'none'
+      ? `<button class="btn btn-primary btn-sm" data-action="install" data-id="${esc(course.id)}">Install</button>`
+      : course.badge === 'update'
+        ? `
         <button class="btn btn-primary btn-sm" data-action="install" data-id="${esc(course.id)}">Update</button>
         <button class="btn btn-ghost btn-sm" data-action="start" data-id="${esc(course.id)}">Start</button>
-        <button class="btn btn-ghost btn-sm btn-danger" data-action="uninstall" data-id="${esc(course.id)}">Remove</button>`;
-    } else {
-      actionsHtml = `
+        <button class="btn btn-ghost btn-sm btn-danger" data-action="uninstall" data-id="${esc(course.id)}">Remove</button>`
+        : `
         <button class="btn btn-ghost btn-sm" data-action="start" data-id="${esc(course.id)}">Start</button>
         <button class="btn btn-ghost btn-sm btn-danger" data-action="uninstall" data-id="${esc(course.id)}">Remove</button>`;
-    }
 
     card.innerHTML = `
       <div class="course-card-title">${esc(course.title)} ${badgeHtml}</div>

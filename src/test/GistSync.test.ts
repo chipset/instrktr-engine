@@ -101,7 +101,7 @@ describe('GistSync.pull with mocked fetch', () => {
     const gistContent = JSON.stringify({ 'course-a': makeProgress('2024-01-01T00:00:00.000Z') });
 
     let call = 0;
-    stubFetch((url) => {
+    stubFetch(() => {
       call++;
       if (call === 1) { return { ok: true, status: 200, json: async () => firstPage }; }
       if (call === 2) { return { ok: true, status: 200, json: async () => secondPage }; }

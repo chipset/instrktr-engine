@@ -5,7 +5,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { CheckResult, ExecError } from './types';
-import { buildContext, TerminalAPI } from '../context/ValidatorContext';
+import { buildContext, TerminalAPI, ValidatorContext } from '../context/ValidatorContext';
 
 // Modules a course validator must never be able to load.
 // Critical: 'module' exposes Module._load which bypasses safeRequire entirely.
@@ -25,18 +25,17 @@ const BLOCKED_MODULES = new Set([
   'v8', 'node:v8',
   'vm', 'node:vm',
 ]);
-const ALLOWED_MODULES = new Set([
-  'assert', 'node:assert',
-  'path', 'node:path',
-  'url', 'node:url',
-  'util', 'node:util',
-]);
-
 const execFileAsync = promisify(execFile);
 const VALIDATOR_TIMEOUT_MS = 30_000;
 
 interface SandboxModule {
   exports: unknown;
+}
+
+interface SandboxRuntime {
+  cache: Map<string, SandboxModule>;
+  context: vm.Context;
+  courseDir: string;
 }
 
 /** Split a command string into [cmd, ...args] honouring single- and double-quoted tokens. */
@@ -127,12 +126,13 @@ export class ValidatorRunner {
 
   private async _runJs(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
+    let runtime: SandboxRuntime;
     try {
       const courseDir = path.dirname(path.dirname(validatorPath));
+      runtime = this._createSandboxRuntime(courseDir);
       const mod = this._loadSandboxModule(
         path.resolve(validatorPath),
-        path.resolve(courseDir),
-        new Map<string, SandboxModule>(),
+        runtime,
       );
       fn = mod.exports as typeof fn;
     } catch (err) {
@@ -148,82 +148,78 @@ export class ValidatorRunner {
 
     try {
       const ctx = buildContext(this._workspaceRoot, terminal);
-      return await Promise.race([fn(ctx), timeout]);
+      return await Promise.race([this._invokeSandboxValidator(fn, ctx, runtime), timeout]);
     } catch (err) {
       return { status: 'fail', message: String(err) };
     }
   }
 
+  private _createSandboxRuntime(courseDir: string): SandboxRuntime {
+    return {
+      cache: new Map<string, SandboxModule>(),
+      context: vm.createContext(Object.create(null)),
+      courseDir: path.resolve(courseDir),
+    };
+  }
+
   private _loadSandboxModule(
     modulePath: string,
-    courseDir: string,
-    cache: Map<string, SandboxModule>,
+    runtime: SandboxRuntime,
   ): SandboxModule {
-    const resolvedPath = this._resolveSandboxModulePath(modulePath, courseDir);
-    const cached = cache.get(resolvedPath);
+    const resolvedPath = this._resolveSandboxModulePath(modulePath, runtime.courseDir);
+    const cached = runtime.cache.get(resolvedPath);
     if (cached) { return cached; }
 
-    const mod: SandboxModule = { exports: {} };
-    cache.set(resolvedPath, mod);
+    const mod = vm.runInContext('({ exports: {} })', runtime.context) as SandboxModule;
+    runtime.cache.set(resolvedPath, mod);
 
     if (resolvedPath.endsWith('.json')) {
-      mod.exports = JSON.parse(fsSync.readFileSync(resolvedPath, 'utf8')) as unknown;
+      const json = fsSync.readFileSync(resolvedPath, 'utf8');
+      mod.exports = vm.runInContext(
+        `JSON.parse(${JSON.stringify(json)})`,
+        runtime.context,
+      ) as unknown;
       return mod;
     }
 
     const src = fsSync.readFileSync(resolvedPath, 'utf8');
     const moduleDir = path.dirname(resolvedPath);
-    const sandboxRequire = this._buildSandboxRequire(moduleDir, courseDir, cache);
-    const sandbox = Object.create(null) as Record<string, unknown>;
-    sandbox.console = console;
-    sandbox.module = mod;
-    sandbox.exports = mod.exports;
-    sandbox.require = sandboxRequire;
-    sandbox.__filename = resolvedPath;
-    sandbox.__dirname = moduleDir;
-    sandbox.setTimeout = setTimeout;
-    sandbox.clearTimeout = clearTimeout;
-    sandbox.setInterval = setInterval;
-    sandbox.clearInterval = clearInterval;
-    sandbox.TextEncoder = TextEncoder;
-    sandbox.TextDecoder = TextDecoder;
-    const context = vm.createContext(sandbox);
+    const sandboxRequire = this._buildSandboxRequire(moduleDir, runtime);
 
     const wrapper = new vm.Script(
-      `(function(require, module, exports, __filename, __dirname) { 'use strict'; ${src}\n })`,
+      `(function(__hostRequire, module, __filename, __dirname) {
+        const require = (id) => __hostRequire(String(id));
+        const exports = module.exports;
+        (function(require, module, exports, __filename, __dirname) { 'use strict'; ${src}\n })(require, module, exports, __filename, __dirname);
+        return module.exports;
+      })`,
       { filename: resolvedPath },
     );
-    const fn = wrapper.runInContext(context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+    const fn = wrapper.runInContext(runtime.context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
       require: (id: string) => unknown,
       module: SandboxModule,
-      exports: unknown,
       __filename: string,
       __dirname: string,
-    ) => void;
-    fn(sandboxRequire, mod, mod.exports, resolvedPath, moduleDir);
+    ) => unknown;
+    mod.exports = fn(sandboxRequire, mod, resolvedPath, moduleDir);
     return mod;
   }
 
   private _buildSandboxRequire(
     moduleDir: string,
-    courseDir: string,
-    cache: Map<string, SandboxModule>,
+    runtime: SandboxRuntime,
   ) {
     const requireFn = (id: string) => {
       if (BLOCKED_MODULES.has(id)) {
         throw new Error(`Validator cannot require('${id}') — blocked for security.`);
       }
-      if (ALLOWED_MODULES.has(id)) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        return require(id);
-      }
       if (!id.startsWith('.')) {
-        throw new Error(`Validator cannot require('${id}') — only safe built-ins and relative files are allowed.`);
+        throw new Error(`Validator cannot require('${id}') — only relative files inside the course directory are allowed.`);
       }
 
       const candidate = path.resolve(moduleDir, id);
-      const resolved = this._resolveModuleCandidate(candidate, courseDir);
-      return this._loadSandboxModule(resolved, courseDir, cache).exports;
+      const resolved = this._resolveModuleCandidate(candidate, runtime.courseDir);
+      return this._loadSandboxModule(resolved, runtime).exports;
     };
 
     Object.defineProperty(requireFn, 'resolve', {
@@ -231,7 +227,7 @@ export class ValidatorRunner {
         if (!id.startsWith('.')) {
           throw new Error(`Validator cannot resolve('${id}') — only relative files are allowed.`);
         }
-        return this._resolveModuleCandidate(path.resolve(moduleDir, id), courseDir);
+        return this._resolveModuleCandidate(path.resolve(moduleDir, id), runtime.courseDir);
       },
     });
 
@@ -267,6 +263,92 @@ export class ValidatorRunner {
 
   private _resolveSandboxModulePath(modulePath: string, courseDir: string): string {
     return this._resolveModuleCandidate(modulePath, courseDir);
+  }
+
+  private async _invokeSandboxValidator(
+    validatorFn: (ctx: ValidatorContext) => Promise<CheckResult>,
+    hostContext: ValidatorContext,
+    runtime: SandboxRuntime,
+  ): Promise<CheckResult> {
+    const bridge = (op: string, args: unknown[]): unknown => {
+      switch (op) {
+        case 'files.exists':
+          return hostContext.files.exists(this._expectStringArg(args, 0, op));
+        case 'files.read':
+          return hostContext.files.read(this._expectStringArg(args, 0, op));
+        case 'files.matches':
+          return hostContext.files.matches(
+            this._expectStringArg(args, 0, op),
+            this._expectRegExpArg(args, 1, op),
+          );
+        case 'files.list':
+          return hostContext.files.list(this._expectStringArg(args, 0, op));
+        case 'terminal.lastCommand':
+          return hostContext.terminal.lastCommand();
+        case 'terminal.outputContains':
+          return hostContext.terminal.outputContains(this._expectStringArg(args, 0, op));
+        case 'terminal.run':
+          return hostContext.terminal.run(this._expectStringArg(args, 0, op));
+        case 'env.get':
+          return hostContext.env.get(this._expectStringArg(args, 0, op));
+        case 'workspace.getConfig':
+          return hostContext.workspace.getConfig(this._expectStringArg(args, 0, op));
+        default:
+          throw new Error(`Unknown validator bridge operation: ${op}`);
+      }
+    };
+
+    const invoke = new vm.Script(
+      `(async function(__validator, __bridge) {
+        const bridgeAsync = (op) => (...args) => Promise.resolve(__bridge(op, args));
+        const ctx = {
+          files: {
+            exists: bridgeAsync('files.exists'),
+            read: bridgeAsync('files.read'),
+            matches: bridgeAsync('files.matches'),
+            list: bridgeAsync('files.list'),
+          },
+          terminal: {
+            lastCommand: bridgeAsync('terminal.lastCommand'),
+            outputContains: bridgeAsync('terminal.outputContains'),
+            run: bridgeAsync('terminal.run'),
+          },
+          env: {
+            get: (name) => __bridge('env.get', [name]),
+          },
+          workspace: {
+            getConfig: bridgeAsync('workspace.getConfig'),
+          },
+          pass: (message) => ({ status: 'pass', message }),
+          fail: (message) => ({ status: 'fail', message }),
+          warn: (message) => ({ status: 'warn', message }),
+        };
+        return await __validator(ctx);
+      })`,
+    );
+
+    const run = invoke.runInContext(runtime.context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+      validator: (ctx: ValidatorContext) => Promise<CheckResult>,
+      bridge: (op: string, args: unknown[]) => unknown,
+    ) => Promise<CheckResult>;
+
+    return await run(validatorFn, bridge);
+  }
+
+  private _expectStringArg(args: unknown[], index: number, op: string): string {
+    const value = args[index];
+    if (typeof value !== 'string') {
+      throw new Error(`${op} expects argument ${index + 1} to be a string.`);
+    }
+    return value;
+  }
+
+  private _expectRegExpArg(args: unknown[], index: number, op: string): RegExp {
+    const value = args[index];
+    if (Object.prototype.toString.call(value) !== '[object RegExp]') {
+      throw new Error(`${op} expects argument ${index + 1} to be a RegExp.`);
+    }
+    return value as RegExp;
   }
 
   static buildTerminalAPI(workspaceRoot: vscode.Uri): TerminalAPI {
