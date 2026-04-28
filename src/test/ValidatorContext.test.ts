@@ -9,6 +9,7 @@ const terminalStub = {
   lastCommand: async () => '',
   outputContains: async () => false,
   run: async () => ({ stdout: '', stderr: '', exitCode: 0 }),
+  runShell: async () => ({ stdout: '', stderr: '', exitCode: 0 }),
 };
 
 describe('ValidatorContext path traversal protection', () => {

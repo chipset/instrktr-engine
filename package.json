@@ -2,7 +2,7 @@
   "name": "instrktr",
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "publisher": "instrktr",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -147,6 +147,18 @@
           "type": "string",
           "default": "",
           "description": "Absolute path to a local course folder to automatically start when VS Code opens. Takes precedence over instrktr.startupCourse."
+        },
+        "instrktr.debugValidatorCommands": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Log validator command execution and permission decisions to the **Instrktr** output channel for debugging."
+        },
+        "instrktr.disableValidatorCommandSecurityChecks": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Disable validator command permission prompts and run validator commands without asking. **Only enable this for courses you fully trust.**"
         }
       }
     }
@@ -161,11 +173,14 @@
     "lint": "eslint src"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.93.0",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.24.0",
+    "eslint": "^10.2.1",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.59.1",
     "vitest": "^4.1.5"
   },
   "dependencies": {

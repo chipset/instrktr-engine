@@ -52,6 +52,34 @@ Absolute path, or a VS Code-style workspace-relative path, to a local course fol
 
 ---
 
+### `instrktr.debugValidatorCommands`
+
+**Type:** `boolean` | **Default:** `false`
+
+When enabled, Instrktr writes validator command execution and permission decisions to the **Instrktr** output channel. Use this when a validator command does not prompt as expected, or when you need to confirm whether a check used `context.terminal.run(...)`, a Bash validator, a cached allow decision, or only workspace-scoped file APIs such as `context.files.exists(...)`.
+
+```json
+"instrktr.debugValidatorCommands": true
+```
+
+The log includes command text, working directory, course/step metadata when available, permission decisions, exit codes, and output byte counts. It does not log full stdout/stderr.
+
+---
+
+### `instrktr.disableValidatorCommandSecurityChecks`
+
+**Type:** `boolean` | **Default:** `false`
+
+Disables validator command permission prompts globally. When enabled, commands from `context.terminal.run(...)` and Bash validators run without asking.
+
+```json
+"instrktr.disableValidatorCommandSecurityChecks": true
+```
+
+Only enable this for courses you fully trust. Validator commands run as your user and can inspect or change files that your VS Code process can access.
+
+---
+
 ## Precedence and Load Order
 
 On activation, Instrktr resolves what to start in this order:
@@ -233,3 +261,5 @@ module.exports = async function validate(context) {
 | `instrktr.registryUrl` | string | `""` | User / Workspace |
 | `instrktr.startupCourse` | string | `""` | User / Workspace |
 | `instrktr.localCoursePath` | string | `""` | User / Workspace |
+| `instrktr.debugValidatorCommands` | boolean | `false` | User / Workspace |
+| `instrktr.disableValidatorCommandSecurityChecks` | boolean | `false` | User |

@@ -56,7 +56,7 @@ function renderCatalog(courses) {
       .map((t) => `<span class="tag">${esc(t)}</span>`)
       .join('');
 
-    let actionsHtml = '';
+    let actionsHtml;
     if (course.badge === 'none') {
       actionsHtml = `<button class="btn btn-primary btn-sm" data-action="install" data-id="${esc(course.id)}">Install</button>`;
     } else if (course.badge === 'update') {

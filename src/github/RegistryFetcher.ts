@@ -33,7 +33,7 @@ export class RegistryFetcher {
         );
         return cached.registry;
       }
-      throw new Error(`Failed to fetch registry and no cache available: ${err}`);
+      throw new Error(`Failed to fetch registry and no cache available: ${err}`, { cause: err });
     }
   }
 
@@ -84,7 +84,7 @@ export class RegistryFetcher {
           throw new Error(`Registry course[${i}] missing required field: "${field}"`);
         }
       }
-      if (!/^[\w.\-]+\/[\w.\-]+$/.test(course.repo)) {
+      if (!/^[\w.-]+\/[\w.-]+$/.test(course.repo)) {
         throw new Error(`Registry course[${i}] has invalid repo format: "${course.repo}" (expected "org/repo")`);
       }
     }
