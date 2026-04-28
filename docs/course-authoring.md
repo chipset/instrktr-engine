@@ -81,7 +81,59 @@ Normal `https://` links open in the system browser as usual.
 
 ### Fenced code blocks
 
-Standard Markdown fenced blocks (` ``` `) render with a **Copy** control in the Instrktr panel so learners can paste into the editor or terminal without retyping.
+Standard Markdown **fenced** blocks (triple backticks) render with a **Copy** button in the Active Course panel. Learners click **Copy** and paste into the editor, a new file, or an external terminal. You do not add any special syntax for the button — only normal Markdown fences in `instructions.md`.
+
+**What gets a Copy button:** fenced blocks only. Inline `` `code` `` in a sentence does not.
+
+#### Example: command learners should run
+
+Write this in `instructions.md`:
+
+````markdown
+From the project root, run:
+
+```bash
+npm install && npm test
+```
+
+If `npm` is not on your PATH, use the full path your instructor shared.
+````
+
+Learners see the shell block with **Copy** and can paste the exact command.
+
+#### Example: multi-line config or manifest
+
+````markdown
+Add a `docker-compose.yml` with this service definition:
+
+```yaml
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: npm run dev
+```
+````
+
+Optional **language tags** (`bash`, `yaml`, `json`, …) are only for readability in the source; copying always uses the plain text of the block.
+
+#### Example: longer snippet (workshop / mainframe-adjacent flows)
+
+````markdown
+Paste this JCL-style job card into your editor and adjust the job name:
+
+```text
+//MYJOB   JOB (ACCT),'TRAINING',CLASS=A,MSGCLASS=X
+//STEP1   EXEC PGM=IEFBR14
+//SYSPRINT DD SYSOUT=*
+```
+
+Then save as `hello.jcl` in the workspace root.
+````
+
+Use a language tag that matches what learners expect (`text`, `jcl`, `sh`, etc.); unsupported tags still render as a monospace block with **Copy**.
 
 ---
 
