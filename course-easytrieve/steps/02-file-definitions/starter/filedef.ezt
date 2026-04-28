@@ -1,0 +1,19 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report: file definitions
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+* TODO: Add field definitions for the EMPLOYEE record below.
+*       Format: field-name  start-position  length  type  [decimals]
+*
+*       Fields to define:
+*         EMP-ID      starts at 1,  length 9,  type A
+*         EMP-NAME    starts at 10, length 30, type A
+*         EMP-DEPT    starts at 40, length 4,  type A
+*         EMP-SALARY  starts at 44, length 7,  type N, 2 decimals
+*         EMP-STATUS  starts at 51, length 1,  type A
+
+
+  W
+
+  P

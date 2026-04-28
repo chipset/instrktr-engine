@@ -1,0 +1,40 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report with salary totals
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+  EMP-ID       1   9  A
+  EMP-NAME    10  30  A
+  EMP-DEPT    40   4  A
+  EMP-SALARY  44   7  N  2
+  EMP-STATUS  51   1  A
+
+  W
+  TOTAL-SAL    N  11  2  VALUE 0
+  EMP-COUNT    N   6     VALUE 0
+* TODO 1: Add AVG-SALARY  N  11  2  VALUE 0
+
+
+  P
+  REPORT EMPRPT  PRINTER
+    TITLE   'Employee Salary Report'
+    HEADING 'ID'      'Name'     'Dept'   'Salary'
+    LINE    EMP-ID    EMP-NAME   EMP-DEPT EMP-SALARY
+
+* TODO 2 (optional): Add a REPORT SUMMARY block here to show totals
+*   REPORT SUMMARY  PRINTER
+*     TITLE   'Salary Summary'
+*     FOOTING 'Count'   EMP-COUNT  'Total'  TOTAL-SAL  'Average'  AVG-SALARY
+
+
+  IF EMP-STATUS EQ 'A'
+    COMPUTE TOTAL-SAL = TOTAL-SAL + EMP-SALARY
+    COMPUTE EMP-COUNT = EMP-COUNT + 1
+    PRINT EMPRPT
+  END-IF
+
+* TODO 3: Add LABEL EOF block below to compute AVG-SALARY and print SUMMARY
+*   LABEL EOF
+*   COMPUTE AVG-SALARY = TOTAL-SAL / EMP-COUNT
+*   PRINT SUMMARY
+

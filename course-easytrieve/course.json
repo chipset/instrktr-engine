@@ -1,0 +1,104 @@
+{
+  "id": "easytrieve-intro",
+  "title": "Generate, Validate, and Execute Easytrieve Programs",
+  "version": "1.0.0",
+  "engineVersion": ">=0.3.5",
+  "steps": [
+    {
+      "id": "structure",
+      "title": "Easytrieve Program Structure",
+      "instructions": "steps/01-structure/instructions.md",
+      "starter": "steps/01-structure/starter",
+      "solution": "steps/01-structure/solution",
+      "validator": "steps/01-structure/validate.js",
+      "hints": [
+        "An Easytrieve Plus program has three main sections in order: FILE (input/output file declarations), W (working storage), and P (procedure logic). Each section begins with its keyword on a line by itself.",
+        "Lines starting with * or /* are comments. Easytrieve is not column-sensitive — statements can begin anywhere after column 1, but column 1 is reserved for statement labels and the continuation character."
+      ]
+    },
+    {
+      "id": "file-definitions",
+      "title": "File and Field Definitions",
+      "instructions": "steps/02-file-definitions/instructions.md",
+      "starter": "steps/02-file-definitions/starter",
+      "solution": "steps/02-file-definitions/solution",
+      "validator": "steps/02-file-definitions/validate.js",
+      "hints": [
+        "The FILE statement names the file and links it to its JCL DD name: FILE EMPLOYEE EMPLOYEE-DD. Immediately after, list each field with: name  start-position  length  type  [decimals]",
+        "Field types: A = alphanumeric, N = numeric (display), P = packed decimal. A salary field with 2 decimal places is defined as: EMP-SALARY  44  7  N  2"
+      ]
+    },
+    {
+      "id": "working-storage",
+      "title": "Working Storage",
+      "instructions": "steps/03-working-storage/instructions.md",
+      "starter": "steps/03-working-storage/starter",
+      "solution": "steps/03-working-storage/solution",
+      "validator": "steps/03-working-storage/validate.js",
+      "hints": [
+        "The W section declares your program's working variables. Each entry looks like: fieldname  type  length  [decimals]  — for example, TOTAL-SAL  N  11  2 defines an 11-digit numeric field with 2 decimal places.",
+        "Initialize a field at declaration time with the VALUE clause: COUNTER  N  6  VALUE 0. Without VALUE, numeric fields start at zero and alphanumeric fields start as spaces."
+      ]
+    },
+    {
+      "id": "conditionals",
+      "title": "Conditional Processing",
+      "instructions": "steps/04-conditionals/instructions.md",
+      "starter": "steps/04-conditionals/starter",
+      "solution": "steps/04-conditionals/solution",
+      "validator": "steps/04-conditionals/validate.js",
+      "hints": [
+        "Easytrieve conditionals follow the pattern: IF condition / statements / ELSE / statements / END-IF. The condition uses EQ, NE, GT, LT, GE, LE for comparisons, and AND/OR to combine them.",
+        "To test whether a field contains a valid number, use: IF fieldname NUMERIC. To test a specific value: IF EMP-STATUS EQ 'A'. Literals are enclosed in single quotes."
+      ]
+    },
+    {
+      "id": "reports",
+      "title": "Generating Reports",
+      "instructions": "steps/05-reports/instructions.md",
+      "starter": "steps/05-reports/starter",
+      "solution": "steps/05-reports/solution",
+      "validator": "steps/05-reports/validate.js",
+      "hints": [
+        "Define a report with: REPORT reportname  PRINTER. Then specify TITLE 'Report Title', HEADING 'col heading', and LINE field1  field2  field3 to define the output columns. Call PRINT reportname in the P section to write a line.",
+        "HEADING and LINE statements belong inside the REPORT block. The TITLE appears at the top of each page. Each LINE statement defines one output row layout — list the fields in the order you want them printed left to right."
+      ]
+    },
+    {
+      "id": "arithmetic",
+      "title": "Arithmetic and Accumulators",
+      "instructions": "steps/06-arithmetic/instructions.md",
+      "starter": "steps/06-arithmetic/starter",
+      "solution": "steps/06-arithmetic/solution",
+      "validator": "steps/06-arithmetic/validate.js",
+      "hints": [
+        "Use COMPUTE to perform arithmetic: COMPUTE TOTAL-SAL = TOTAL-SAL + EMP-SALARY. Operators are + (add), - (subtract), * (multiply), / (divide). Always define the result field in the W section first.",
+        "Easytrieve also provides built-in summary functions on REPORT fields: SUM fieldname accumulates a total automatically; COUNT counts records. These are specified on the LINE or FOOTING statement inside a REPORT block."
+      ]
+    },
+    {
+      "id": "validation",
+      "title": "Data Validation",
+      "instructions": "steps/07-validation/instructions.md",
+      "starter": "steps/07-validation/starter",
+      "solution": "steps/07-validation/solution",
+      "validator": "steps/07-validation/validate.js",
+      "hints": [
+        "A validation program reads each record, applies checks, and writes errors to an error report. Use IF NOT fieldname NUMERIC to catch non-numeric data in a numeric field, and IF fieldname EQ SPACES to find missing required fields.",
+        "Keep an error counter in W: ERROR-COUNT  N  6  VALUE 0. Increment it with COMPUTE ERROR-COUNT = ERROR-COUNT + 1. Write a summary at end-of-file using the EOF label: LABEL EOF / PRINT SUMMARY-REPORT."
+      ]
+    },
+    {
+      "id": "jcl",
+      "title": "JCL to Execute Easytrieve",
+      "instructions": "steps/08-jcl/instructions.md",
+      "starter": "steps/08-jcl/starter",
+      "solution": "steps/08-jcl/solution",
+      "validator": "steps/08-jcl/validate.js",
+      "hints": [
+        "The Easytrieve Plus load module is EZTPA00. Execute it with: //STEP1 EXEC PGM=EZTPA00. Your Easytrieve source goes in the SYSIN DD statement (either inline with DD * or as a catalogued dataset).",
+        "Every DD name referenced in your FILE statements must have a matching DD card in the JCL. SYSPRINT DD SYSOUT=* captures the report output. EZTVARY DD is optional but holds Easytrieve system messages."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report: conditional logic
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+  EMP-ID       1   9  A
+  EMP-NAME    10  30  A
+  EMP-DEPT    40   4  A
+  EMP-SALARY  44   7  N  2
+  EMP-STATUS  51   1  A
+
+  W
+  TOTAL-SAL    N  11  2  VALUE 0
+  EMP-COUNT    N   6     VALUE 0
+  DEPT-SAVE    A   4     VALUE SPACES
+  ERROR-FLAG   A   1     VALUE 'N'
+
+  P
+* TODO 1: IF EMP-STATUS EQ 'A'  (check for active status)
+
+
+*   TODO 2: IF EMP-SALARY NUMERIC  (check salary is valid)
+
+
+*     TODO 3: COMPUTE TOTAL-SAL = TOTAL-SAL + EMP-SALARY
+*             COMPUTE EMP-COUNT = EMP-COUNT + 1
+
+
+*   TODO 4: ELSE (salary not numeric)
+*             MOVE 'Y' TO ERROR-FLAG
+
+
+*   Close the inner IF
+*   Close the outer IF
+
