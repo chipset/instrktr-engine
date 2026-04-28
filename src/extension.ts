@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { PanelProvider } from './webview/PanelProvider';
 import { CatalogProvider } from './webview/CatalogProvider';
 import { StepRunner } from './engine/StepRunner';
@@ -13,6 +12,7 @@ import { GistSync } from './github/GistSync';
 import { RegistryCourse } from './engine/types';
 import { disposeLogger } from './logger';
 import { resolveBundledDefaultCourse, resolveCourseDirectory } from './engine/CoursePathResolver';
+import { VSCodeCommandPermissionService } from './security/CommandPermissionService';
 
 export async function activate(context: vscode.ExtensionContext) {
   let workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri
@@ -23,9 +23,10 @@ export async function activate(context: vscode.ExtensionContext) {
   const auth = new AuthManager();
   const progressStore = new ProgressStore(context.globalStorageUri);
   const gistSync = new GistSync(context.globalState);
-  const runner = new StepRunner(workspaceRoot, progressStore);
+  const commandPermissions = new VSCodeCommandPermissionService(context.globalState);
+  const runner = new StepRunner(workspaceRoot, progressStore, commandPermissions);
   context.subscriptions.push(auth);
-  const terminalWatcher = new TerminalWatcher(workspaceRoot);
+  const terminalWatcher = new TerminalWatcher(workspaceRoot, commandPermissions);
   const registry = new RegistryFetcher(context.globalStorageUri);
   const installed = new InstalledCourses(context.globalStorageUri);
   const downloader = new CourseDownloader(context.globalStorageUri);
@@ -61,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     if (!state.loaded) { return; }
     statusBar.text = `$(book) ${state.courseTitle} — Step ${state.stepIndex + 1}/${state.totalSteps}`;
-    statusBar.tooltip = state.title;
+    statusBar.tooltip = state.courseComplete ? state.courseTitle : state.title;
     statusBar.show();
   });
 

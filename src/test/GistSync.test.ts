@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as vscode from 'vscode';
 import { GistSync } from '../github/GistSync';
 import { CourseProgress } from '../engine/ProgressStore';
 
@@ -7,6 +8,10 @@ function makeMemento() {
   return {
     get: vi.fn((key: string) => store[key]),
     update: vi.fn(async (key: string, value: unknown) => { store[key] = value; }),
+    keys: vi.fn(() => Object.keys(store)),
+  } as unknown as vscode.Memento & {
+    get: ReturnType<typeof vi.fn<(key: string) => unknown>>;
+    update: ReturnType<typeof vi.fn<(key: string, value: unknown) => Promise<void>>>;
   };
 }
 
@@ -32,7 +37,12 @@ describe('GistSync._merge', () => {
     local: Record<string, CourseProgress>,
     remote: Record<string, CourseProgress>,
   ) {
-    return (sync as unknown as { _merge: typeof sync['pull'] })['_merge'](local, remote);
+    return (sync as unknown as {
+      _merge(
+        local: Record<string, CourseProgress>,
+        remote: Record<string, CourseProgress>,
+      ): Record<string, CourseProgress>;
+    })['_merge'](local, remote);
   }
 
   it('keeps local entry when local is more recent', () => {
@@ -101,7 +111,7 @@ describe('GistSync.pull with mocked fetch', () => {
     const gistContent = JSON.stringify({ 'course-a': makeProgress('2024-01-01T00:00:00.000Z') });
 
     let call = 0;
-    stubFetch((url) => {
+    stubFetch((_url) => {
       call++;
       if (call === 1) { return { ok: true, status: 200, json: async () => firstPage }; }
       if (call === 2) { return { ok: true, status: 200, json: async () => secondPage }; }

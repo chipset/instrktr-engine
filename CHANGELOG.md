@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.10] — 2026-04-28
+
+### Added
+- Validator command permission prompts now explain the command, working directory, course, and step before running `context.terminal.run(...)` or Bash validators. Learners can choose **Allow Once**, **Always Allow**, or **Deny**.
+- Added `instrktr.debugValidatorCommands` to log validator command routing, permission decisions, and exit codes to the Instrktr output channel.
+
+### Tooling
+- Added ESLint dependencies and a flat config so `npm run lint` is enforceable.
+
+---
+
 ## [0.3.9] — 2026-04-27
 
 ### Added

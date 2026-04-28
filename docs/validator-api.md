@@ -327,6 +327,10 @@ if (exitCode !== 0) {
 
 `stderr` contains any error output. Both `stdout` and `stderr` are trimmed strings.
 
+Before a validator command runs, Instrktr asks the learner for permission. The prompt explains what the command is checking, shows the exact command and working directory, and offers **Allow Once**, **Always Allow**, or **Deny**. Always-allow decisions are scoped to the exact normalized command, course, step, source, and workspace directory.
+
+Workspace file checks such as `context.files.exists('package.json')` do not prompt because they are already constrained to the workspace root and cannot inspect paths outside it.
+
 ---
 
 ### `context.workspace`

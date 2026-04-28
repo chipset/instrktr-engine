@@ -8,6 +8,10 @@ import { FileWatcher, TerminalAPI } from '../context/ValidatorContext';
 import { ValidatorRunner } from './ValidatorRunner';
 import { CourseLoader } from './CourseLoader';
 import { ProgressStore } from './ProgressStore';
+import {
+  AllowAllCommandPermissionService,
+  CommandPermissionService,
+} from '../security/SecureCommandRunner';
 
 export class StepRunner {
   private _course?: CourseDef;
@@ -31,10 +35,11 @@ export class StepRunner {
   constructor(
     private _workspaceRoot: vscode.Uri,
     private readonly _progress: ProgressStore,
+    private readonly _permissions: CommandPermissionService = new AllowAllCommandPermissionService(),
   ) {
     this._scaffolder = new FileScaffolder(_workspaceRoot);
-    this._terminal = ValidatorRunner.buildTerminalAPI(_workspaceRoot);
-    this._validatorRunner = new ValidatorRunner(_workspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(_workspaceRoot, _permissions);
+    this._validatorRunner = new ValidatorRunner(_workspaceRoot, _permissions);
   }
 
   setTerminalAPI(api: TerminalAPI) {
@@ -45,8 +50,8 @@ export class StepRunner {
     if (this._workspaceRoot.fsPath === workspaceRoot.fsPath) { return; }
     this._workspaceRoot = workspaceRoot;
     this._scaffolder = new FileScaffolder(workspaceRoot);
-    this._terminal = ValidatorRunner.buildTerminalAPI(workspaceRoot);
-    this._validatorRunner = new ValidatorRunner(workspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(workspaceRoot, this._permissions);
+    this._validatorRunner = new ValidatorRunner(workspaceRoot, this._permissions);
     this._fileWatcher.watch(workspaceRoot);
   }
 
@@ -132,7 +137,13 @@ export class StepRunner {
       return { status: 'pass', message: 'Step complete!' };
     }
     const validatorPath = this._safeCourseJoin(this._courseDir, step.validator);
-    const result = await this._validatorRunner.run(validatorPath, this._terminal, this._stepIndex);
+    const result = await this._validatorRunner.run(
+      validatorPath,
+      this._terminal,
+      this._stepIndex,
+      this._course.id,
+      step.id,
+    );
 
     if (result.status === 'pass') {
       await this._progress.markStepComplete(this._course.id, this._stepIndex);
@@ -171,7 +182,7 @@ export class StepRunner {
   }
 
   async previousStep(): Promise<boolean> {
-    if (this._stepIndex === 0 || this._navigating) { return false; }
+    if (!this._course || this._stepIndex === 0 || this._navigating) { return false; }
     this._navigating = true;
     try {
       this._stepIndex--;

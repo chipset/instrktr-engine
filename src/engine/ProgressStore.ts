@@ -68,7 +68,7 @@ export class ProgressStore {
     }
 
     // Version mismatch — migrate
-    const { progress, migratedSteps } = this._migrator.migrate(existing, course);
+    const { progress } = this._migrator.migrate(existing, course);
     this._data[course.id] = progress;
     await this._save();
     return { progress, migrated: true };
