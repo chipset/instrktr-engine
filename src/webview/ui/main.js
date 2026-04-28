@@ -48,6 +48,57 @@ function sanitizeHtml(html) {
   return doc.body.innerHTML;
 }
 
+/** Wrap each fenced-code `<pre>` with a toolbar and Copy control (idempotent). */
+function enhanceInstructionCodeBlocks(container) {
+  for (const pre of container.querySelectorAll('pre')) {
+    if (pre.closest('.instrktr-code-block')) { continue; }
+    const wrap = document.createElement('div');
+    wrap.className = 'instrktr-code-block';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'instrktr-copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    wrap.insertBefore(btn, pre);
+  }
+}
+
+function getPrePlainText(pre) {
+  const code = pre.querySelector(':scope > code');
+  const raw = (code != null ? code.innerText : pre.innerText) || '';
+  return raw.replace(/\u00a0/g, ' ');
+}
+
+async function copyPreToClipboard(pre) {
+  const text = getPrePlainText(pre);
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
 function applyState(state) {
   const loaded = state.loaded ?? false;
   window.scrollTo(0, 0);
@@ -82,6 +133,7 @@ function applyState(state) {
   courseTitle.textContent = state.courseTitle;
   stepTitle.textContent = state.title;
   instructions.innerHTML = sanitizeHtml(state.instructionsHtml);
+  enhanceInstructionCodeBlocks(instructions);
 
   // Render step dots — clickable
   stepDots.innerHTML = '';
@@ -146,8 +198,25 @@ function showResult(result) {
   }
 }
 
-// Intercept open: links inside rendered instructions
+// Copy buttons and open: links inside rendered instructions
 instructions.addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.instrktr-copy-btn');
+  if (copyBtn) {
+    e.preventDefault();
+    const block = copyBtn.closest('.instrktr-code-block');
+    const pre = block && block.querySelector('pre');
+    if (!pre) { return; }
+    const prevLabel = copyBtn.getAttribute('aria-label');
+    copyPreToClipboard(pre).then((ok) => {
+      copyBtn.textContent = ok ? 'Copied' : 'Failed';
+      copyBtn.setAttribute('aria-label', ok ? 'Copied to clipboard' : 'Copy failed');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy';
+        copyBtn.setAttribute('aria-label', prevLabel || 'Copy code to clipboard');
+      }, 2000);
+    });
+    return;
+  }
   const link = e.target.closest('a[href^="open:"]');
   if (!link) { return; }
   e.preventDefault();

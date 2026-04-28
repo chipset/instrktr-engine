@@ -79,6 +79,10 @@ The path is relative to the workspace root. These render as styled file chips in
 
 Normal `https://` links open in the system browser as usual.
 
+### Fenced code blocks
+
+Standard Markdown fenced blocks (` ``` `) render with a **Copy** control in the Instrktr panel so learners can paste into the editor or terminal without retyping.
+
 ---
 
 ## Starter Files

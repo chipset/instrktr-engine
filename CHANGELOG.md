@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Copy** button on fenced code blocks in the Active Course instructions panel — copies the block text to the clipboard (with a fallback when the Clipboard API is unavailable).
+
+---
+
 ## [0.3.10] — 2026-04-28
 
 ### Added
