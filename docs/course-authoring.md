@@ -83,6 +83,8 @@ Normal `https://` links open in the system browser as usual.
 
 Standard Markdown **fenced** blocks (triple backticks) render with a **Copy** button in the Active Course panel. Learners click **Copy** and paste into the editor, a new file, or an external terminal. You do not add any special syntax for the button — only normal Markdown fences in `instructions.md`.
 
+**Syntax highlighting:** when you add an optional language tag on the opening fence (e.g. ` ```yaml `), Instrktr highlights the block in the panel using highlight.js, themed to match the VS Code UI.
+
 **What gets a Copy button:** fenced blocks only. Inline `` `code` `` in a sentence does not.
 
 #### Example: command learners should run
@@ -134,6 +136,20 @@ Then save as `hello.jcl` in the workspace root.
 ````
 
 Use a language tag that matches what learners expect (`text`, `jcl`, `sh`, etc.); unsupported tags still render as a monospace block with **Copy**.
+
+### Images in instructions
+
+Place image files **inside the course repository** (for example next to the step under `steps/01-intro/assets/`) and reference them with a path **relative to the course root** (the folder that contains `course.json`):
+
+```markdown
+![Architecture overview](steps/01-intro/assets/overview.png)
+```
+
+- **`https:` / `http:`** image URLs are allowed unchanged (useful for hosted diagrams).
+- **`data:`** URIs are passed through as-is.
+- Paths that try to leave the course pack with `..` segments are **not** rewritten and stay broken by design.
+
+Keep assets small; prefer PNG or SVG for clarity in the narrow sidebar.
 
 ---
 
@@ -255,7 +271,7 @@ If you rename, reorder, or remove steps, add a `migration` table so existing pro
 ```json
 {
   "migration": {
-    "1.0.0": {
+    "1.0.0": { 
       "old-step-id": "new-step-id"
     }
   }

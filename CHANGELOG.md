@@ -4,7 +4,9 @@
 
 ### Added
 - **Copy** button on fenced code blocks in the Active Course instructions panel — copies the block text to the clipboard (with a fallback when the Clipboard API is unavailable).
-- Course authoring guide: examples for writing fenced blocks in `instructions.md` (shell, YAML, long text/JCL-style).
+- **Syntax highlighting** for fenced code in step instructions (highlight.js + language tags on fences).
+- **Course-relative images** in instructions: `<img>` / `![alt](path)` paths relative to the course root are served into the webview; `http(s):` and `data:` URLs unchanged. CSP and `localResourceRoots` updated for the Active Course panel.
+- Course authoring guide: examples for fenced blocks, highlighting note, and image placement; README links to authoring for the instruction panel.
 
 ---
 

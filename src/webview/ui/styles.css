@@ -176,6 +176,14 @@ body {
   padding: 0;
 }
 
+.instructions img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0 0 10px;
+  vertical-align: middle;
+}
+
 /* Fenced code blocks: copy control (added by main.js after markdown render) */
 .instrktr-code-block {
   position: relative;

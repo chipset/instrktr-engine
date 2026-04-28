@@ -12,6 +12,8 @@ export class Uri {
 
   static file(p: string): Uri { return new Uri(p); }
 
+  static parse(value: string): Uri { return new Uri(value); }
+
   static joinPath(base: Uri, ...parts: string[]): Uri {
     return new Uri(path.join(base.fsPath, ...parts));
   }

@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { StepRunner } from '../engine/StepRunner';
 import { AuthManager, AuthState } from '../github/AuthManager';
 import type { StepState } from '../engine/types';
+import { rewriteInstructionImages } from './rewriteInstructionImages';
 
 export class PanelProvider implements vscode.WebviewViewProvider {
   static readonly viewId = 'instrktr.panel';
@@ -30,6 +31,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtml(webviewView.webview);
+    this._updateWebviewLocalRoots(webviewView.webview, this._runner.getCourseDirectory());
 
     webviewView.onDidChangeVisibility(() => {
       if (!webviewView.visible) { return; }
@@ -139,8 +141,33 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   }
 
   private _setState(state: StepState) {
-    this._lastState = state;
-    this._view?.webview.postMessage({ command: 'setState', state });
+    const webview = this._view?.webview;
+    const courseDir = this._runner.getCourseDirectory();
+    if (webview) {
+      this._updateWebviewLocalRoots(webview, courseDir);
+    }
+    let outgoing: StepState = state;
+    if (
+      webview &&
+      state.loaded &&
+      'instructionsHtml' in state &&
+      typeof state.instructionsHtml === 'string'
+    ) {
+      outgoing = {
+        ...state,
+        instructionsHtml: rewriteInstructionImages(state.instructionsHtml, courseDir, webview),
+      };
+    }
+    this._lastState = outgoing;
+    this._view?.webview.postMessage({ command: 'setState', state: outgoing });
+  }
+
+  private _updateWebviewLocalRoots(webview: vscode.Webview, courseDir?: string) {
+    const uiBase = vscode.Uri.joinPath(this._extensionUri, 'src', 'webview', 'ui');
+    const roots = courseDir
+      ? [uiBase, vscode.Uri.file(courseDir)]
+      : [uiBase];
+    webview.options = { enableScripts: true, localResourceRoots: roots };
   }
 
   private _setAuth(auth: AuthState) {
@@ -152,15 +179,17 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     const nonce = getNonce();
     const uiBase = vscode.Uri.joinPath(this._extensionUri, 'src', 'webview', 'ui');
     const stylesUri = webview.asWebviewUri(vscode.Uri.joinPath(uiBase, 'styles.css'));
+    const hljsUri = webview.asWebviewUri(vscode.Uri.joinPath(uiBase, 'highlight-instrktr.css'));
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(uiBase, 'main.js'));
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: http: data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="${stylesUri}" rel="stylesheet">
+  <link href="${hljsUri}" rel="stylesheet">
   <title>Instrktr</title>
 </head>
 <body>
