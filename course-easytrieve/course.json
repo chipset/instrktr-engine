@@ -1,0 +1,80 @@
+{
+  "id": "easytrieve-code4z",
+  "title": "Easytrieve with Code4z: Generate, Validate, and Execute",
+  "version": "1.0.0",
+  "engineVersion": ">=0.3.5",
+  "steps": [
+    {
+      "id": "prereqs",
+      "title": "Prerequisites and Code4z Extensions",
+      "instructions": "steps/01-prereqs/instructions.md",
+      "validator": "steps/01-prereqs/validate.js",
+      "starter": "steps/01-prereqs/starter",
+      "solution": "steps/01-prereqs/solution",
+      "hints": [
+        "You need three extensions named in the source material: Easytrieve Language Support, JCL Language Support, and Zowe Explorer.",
+        "A Zowe profile is what connects VS Code to your mainframe session — list it explicitly in your notes file."
+      ]
+    },
+    {
+      "id": "hello-ezt",
+      "title": "Hello World Easytrieve Program",
+      "instructions": "steps/02-hello-ezt/instructions.md",
+      "validator": "steps/02-hello-ezt/validate.js",
+      "starter": "steps/02-hello-ezt/starter",
+      "solution": "steps/02-hello-ezt/solution",
+      "hints": [
+        "The sample program uses DEFINE for a varying work field, JOB INPUT NULL, DISPLAY, then STOP.",
+        "Easytrieve keywords are not case-sensitive, but keep DISPLAY text in quotes as shown."
+      ]
+    },
+    {
+      "id": "editor-features",
+      "title": "Syntax, Symbols, and Navigation",
+      "instructions": "steps/03-editor-features/instructions.md",
+      "validator": "steps/03-editor-features/validate.js",
+      "starter": "steps/03-editor-features/starter",
+      "solution": "steps/03-editor-features/solution",
+      "hints": [
+        "Use an asterisk in column 1 for comment lines the assembler-style way, or leading * after optional blanks per your shop standard — the validator accepts * in the first non-space position.",
+        "One comment line per IDE feature keeps the file readable and passes the check."
+      ]
+    },
+    {
+      "id": "exec-jcl",
+      "title": "JCL to Execute Easytrieve",
+      "instructions": "steps/04-exec-jcl/instructions.md",
+      "validator": "steps/04-exec-jcl/validate.js",
+      "starter": "steps/04-exec-jcl/starter",
+      "solution": "steps/04-exec-jcl/solution",
+      "hints": [
+        "The executor program for Easytrieve is EZTPA00 — your EXEC statement must reference it.",
+        "SYSIN must contain the same Easytrieve source statements you run from the .ezt file, ending before the next JCL statement."
+      ]
+    },
+    {
+      "id": "upload-submit",
+      "title": "Upload Targets and Submitting the Job",
+      "instructions": "steps/05-upload-submit/instructions.md",
+      "validator": "steps/05-upload-submit/validate.js",
+      "starter": "steps/05-upload-submit/starter",
+      "solution": "steps/05-upload-submit/solution",
+      "hints": [
+        "Extension settings use eztdsn for the Easytrieve source library and jcldsn for the JCL library — use those exact names in lowercase in your file.",
+        "Mention both upload and submit paths: right-click the Easytrieve source for upload, then submit via Zowe Explorer or the extension on the JCL member."
+      ]
+    },
+    {
+      "id": "verify-spool",
+      "title": "Jobs, Spool, and Completion Codes",
+      "instructions": "steps/06-verify-spool/instructions.md",
+      "validator": "steps/06-verify-spool/validate.js",
+      "starter": "steps/06-verify-spool/starter",
+      "solution": "steps/06-verify-spool/solution",
+      "hints": [
+        "A normal completion is often shown as 0000 in messages and listings.",
+        "Zowe Explorer groups submitted work under Jobs; DDs such as SYSPRINT hold listing output."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+* Syntax coloring and diagnostics catch errors while I edit Easytrieve.
+* Hover and autocomplete reduce mistyped keywords and show field definitions.
+* Go to Definition navigates symbols and macros fetched from the mainframe profile.
+DEFINE WDUMMY W 82 A VARYING VALUE ''
+JOB INPUT NULL
+DISPLAY 'HELLO WORLD'
+STOP

@@ -1,0 +1,7 @@
+* hello.ezt — fill in the Easytrieve statements below (remove these hint lines when done).
+*
+* Add: DEFINE WDUMMY W 82 A VARYING VALUE ''
+* Add: JOB INPUT NULL
+* Add: DISPLAY 'HELLO WORLD'
+* Add: STOP
+*
