@@ -50,6 +50,9 @@ function sanitizeHtml(html) {
 
 function applyState(state) {
   const loaded = state.loaded ?? false;
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 
   // Show completion screen when course is done
   if (state.courseComplete) {

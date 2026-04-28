@@ -1,10 +1,15 @@
 .vscode/**
+.omx/**
 src/**
+!src/webview/
+!src/webview/ui/
+!src/webview/ui/**
 out/**
 node_modules/**
 esbuild.js
 tsconfig.json
 tsconfig.test.json
+vitest.config.ts
 *.map
 INSTRUQT_ENGINE_PLAN.md
 # test-course, docs, example-validators are intentionally included

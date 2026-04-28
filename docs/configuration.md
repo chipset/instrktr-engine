@@ -40,7 +40,7 @@ Useful for workshops and classroom environments where every participant should l
 
 **Type:** `string` | **Default:** `""`
 
-Absolute path to a local course folder on disk. When set, Instrktr opens this folder automatically on activation in **dev watch mode** — the panel reloads whenever any course file changes. Intended for course authors iterating locally.
+Absolute path, or a VS Code-style workspace-relative path, to a local course folder on disk. When set, Instrktr opens this folder automatically on activation in **dev watch mode** — the panel reloads whenever any course file changes. Intended for course authors iterating locally.
 
 ```json
 "instrktr.localCoursePath": "/Users/alice/courses/course-git-basics"
@@ -60,7 +60,13 @@ On activation, Instrktr resolves what to start in this order:
 2. `instrktr.startupCourse` — if non-empty, checks the local install cache:
    - Already installed → starts immediately
    - Not installed → fetches the registry, downloads the course, then starts
-3. Neither set → panel shows the "No course loaded" empty state
+3. Neither set → opens the bundled JavaScript Fundamentals course if it is packaged with the extension; otherwise the panel shows the "No course loaded" empty state
+
+Before any course starts, Instrktr requires a learner workspace folder for starter files,
+validators, terminal commands, and `open:` links. If VS Code has no folder open, Instrktr
+prompts you to choose a folder and uses that folder as the course working directory.
+Extension global storage is used only for downloaded course packages and progress data,
+not learner work files.
 
 ---
 
@@ -98,7 +104,7 @@ When a learner opens this repo, Instrktr automatically starts the `git-basics` c
 
 Points Instrktr at the current workspace root. Combined with **Instrktr: Open Local Course Folder**, this makes the course folder reload live on every save.
 
-> **Note:** `${workspaceFolder}` is a VS Code variable and is resolved automatically — you do not need to hardcode the path.
+> **Note:** `${workspaceFolder}` is resolved by Instrktr when reading this setting — you do not need to hardcode the path.
 
 ---
 

@@ -27,7 +27,21 @@
     "Education",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:instrktr.catalog",
+    "onView:instrktr.panel",
+    "onCommand:instrktr.openLocalCourse",
+    "onCommand:instrktr.browseCourses",
+    "onCommand:instrktr.refreshRegistry",
+    "onCommand:instrktr.checkWork",
+    "onCommand:instrktr.nextStep",
+    "onCommand:instrktr.previousStep",
+    "onCommand:instrktr.jumpToStep",
+    "onCommand:instrktr.restartCourse",
+    "onCommand:instrktr.signIn",
+    "onCommand:instrktr.signOut"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -86,7 +100,8 @@
         {
           "type": "webview",
           "id": "instrktr.catalog",
-          "name": "Browse Courses"
+          "name": "Browse Courses",
+          "when": "!instrktr.courseLoaded || instrktr.catalogVisible"
         },
         {
           "type": "webview",

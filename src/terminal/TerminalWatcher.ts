@@ -29,7 +29,16 @@ export class TerminalWatcher implements vscode.Disposable {
   private _lastOutput = '';
   private _disposables: vscode.Disposable[] = [];
 
-  constructor(private readonly _workspaceRoot: vscode.Uri) {}
+  constructor(private _workspaceRoot: vscode.Uri) {}
+
+  setWorkspaceRoot(workspaceRoot: vscode.Uri) {
+    if (this._workspaceRoot.fsPath === workspaceRoot.fsPath) { return; }
+    this._workspaceRoot = workspaceRoot;
+    this._lastCommand = '';
+    this._lastOutput = '';
+    this._terminal?.dispose();
+    this._terminal = undefined;
+  }
 
   /**
    * Creates (or reuses) the named Instrktr terminal and starts listening

@@ -18,7 +18,7 @@ Your progress is saved locally and synced across devices via GitHub Gist (option
 ## Getting started
 
 1. Open the **Instrktr** panel in the activity bar (the ▶ icon)
-2. Browse and install a course from the catalog
+2. Start with the bundled JavaScript Fundamentals course, or browse and install another course from the catalog
 3. Work through each step in your editor
 4. Click **Check Work** when you think you're done
 
@@ -33,6 +33,10 @@ Instrktr: Open Local Course Folder
 ```
 
 This opens the course in **dev watch mode** — the panel reloads automatically whenever you save a course file.
+
+Course work files are always created and checked in a learner workspace folder. If VS Code
+does not already have a folder open, Instrktr prompts you to choose one before starting
+the course; it will not use extension global storage as the working directory.
 
 ## Authoring courses
 
@@ -131,7 +135,7 @@ Sign in with GitHub (**Instrktr: Sign in with GitHub**) to sync your progress ac
 |---|---|
 | `instrktr.registryUrl` | URL to a `registry.json` file that populates the course catalog |
 | `instrktr.startupCourse` | Course ID to auto-install and start on VS Code open |
-| `instrktr.localCoursePath` | Absolute path to a local course folder (opens in dev watch mode) |
+| `instrktr.localCoursePath` | Absolute or `${workspaceFolder}`-relative path to a local course folder (opens in dev watch mode) |
 
 See the [Configuration Reference](docs/configuration.md) for full details, scope rules, workshop setup, and monorepo patterns.
 

@@ -4,6 +4,10 @@
   padding: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .empty-state {
   padding: 24px 16px;
   color: var(--vscode-descriptionForeground);
