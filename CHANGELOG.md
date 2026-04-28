@@ -4,6 +4,7 @@
 
 ### Added
 - **Copy** button on fenced code blocks in the Active Course instructions panel — copies the block text to the clipboard (with a fallback when the Clipboard API is unavailable).
+- Course authoring guide: examples for writing fenced blocks in `instructions.md` (shell, YAML, long text/JCL-style).
 
 ---
 
