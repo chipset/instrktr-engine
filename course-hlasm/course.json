@@ -1,0 +1,104 @@
+{
+  "id": "hlasm-intro",
+  "title": "Writing Mainframe Assembler with HLASM",
+  "version": "1.0.0",
+  "engineVersion": ">=0.3.5",
+  "steps": [
+    {
+      "id": "structure",
+      "title": "Program Structure",
+      "instructions": "steps/01-structure/instructions.md",
+      "starter": "steps/01-structure/starter",
+      "solution": "steps/01-structure/solution",
+      "validator": "steps/01-structure/validate.js",
+      "hints": [
+        "Every HLASM program needs a CSECT to mark the start and an END at the bottom. The END operand should match your CSECT label.",
+        "Columns matter: the name (label) goes in columns 1–8, the operation in columns 10–14, and operands from column 16. Use spaces to align."
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Data Definitions: DC and DS",
+      "instructions": "steps/02-data/instructions.md",
+      "starter": "steps/02-data/starter",
+      "solution": "steps/02-data/solution",
+      "validator": "steps/02-data/validate.js",
+      "hints": [
+        "DC defines a constant and initialises the storage. DS only reserves space — the contents are undefined until you write to them.",
+        "Type codes: C = character, X = hexadecimal, F = fullword (4 bytes), H = halfword (2 bytes), B = binary. Length modifiers follow the type: DS CL80 reserves 80 bytes of character storage."
+      ]
+    },
+    {
+      "id": "registers",
+      "title": "Registers and Base Addressing",
+      "instructions": "steps/03-registers/instructions.md",
+      "starter": "steps/03-registers/starter",
+      "solution": "steps/03-registers/solution",
+      "validator": "steps/03-registers/validate.js",
+      "hints": [
+        "BALR R12,0 loads the address of the next instruction into R12. USING *,R12 then tells the assembler to use R12 as the base register for all address calculations.",
+        "Register equates (R0 EQU 0, R1 EQU 1, ...) are just symbolic names — they make the code readable. Define them near the top of your CSECT."
+      ]
+    },
+    {
+      "id": "load-store",
+      "title": "Loading and Storing Data",
+      "instructions": "steps/04-load-store/instructions.md",
+      "starter": "steps/04-load-store/starter",
+      "solution": "steps/04-load-store/solution",
+      "validator": "steps/04-load-store/validate.js",
+      "hints": [
+        "L loads a 32-bit fullword from memory into a register. LR copies one register to another. LA loads an address (or small immediate value) — it never touches memory.",
+        "ST stores a register's 32-bit value to a memory fullword. Always ensure the target DS/DC is aligned on a 4-byte boundary for fullword operations."
+      ]
+    },
+    {
+      "id": "move",
+      "title": "Moving Character Data",
+      "instructions": "steps/05-move/instructions.md",
+      "starter": "steps/05-move/starter",
+      "solution": "steps/05-move/solution",
+      "validator": "steps/05-move/validate.js",
+      "hints": [
+        "MVC copies bytes from source to target — the length comes from the first operand's defined length. MVI moves a single immediate byte into a memory location.",
+        "MVC moves left-to-right, one byte at a time. This means MVC TARGET,TARGET+1 is a valid way to propagate a single character across a field (e.g., after an MVI)."
+      ]
+    },
+    {
+      "id": "arithmetic",
+      "title": "Integer Arithmetic",
+      "instructions": "steps/06-arithmetic/instructions.md",
+      "starter": "steps/06-arithmetic/starter",
+      "solution": "steps/06-arithmetic/solution",
+      "validator": "steps/06-arithmetic/validate.js",
+      "hints": [
+        "A adds a fullword from memory to a register. AR adds two registers. S and SR are the subtract equivalents. Always load your values into registers first.",
+        "M (Multiply) uses a register pair — the multiplicand is in the odd register (e.g. R1), and the 64-bit product is placed in the even-odd pair (e.g. R0-R1). D (Divide) works the same way in reverse."
+      ]
+    },
+    {
+      "id": "branching",
+      "title": "Comparisons and Branching",
+      "instructions": "steps/07-branching/instructions.md",
+      "starter": "steps/07-branching/starter",
+      "solution": "steps/07-branching/solution",
+      "validator": "steps/07-branching/validate.js",
+      "hints": [
+        "C compares a register to a fullword in memory; CR compares two registers. The comparison sets the condition code: 0 = equal, 1 = low, 2 = high.",
+        "BE branches on equal (CC=0), BL on low (CC=1), BH on high (CC=2), BNE on not-equal (CC≠0). B is unconditional. All branch targets must be labels defined in your CSECT."
+      ]
+    },
+    {
+      "id": "linkage",
+      "title": "Standard OS Linkage Convention",
+      "instructions": "steps/08-linkage/instructions.md",
+      "starter": "steps/08-linkage/starter",
+      "solution": "steps/08-linkage/solution",
+      "validator": "steps/08-linkage/validate.js",
+      "hints": [
+        "On entry, R13 points to the caller's 18-word (72-byte) save area, R14 is the return address, and R15 is your entry point. STM R14,R12,12(R13) saves all registers into the caller's save area.",
+        "Chain save areas by storing your save area address at offset +4 of the caller's save area, and storing the caller's R13 at offset +4 of yours. On exit, restore R13, then LM R14,R12,12(R13), then BR R14."
+      ]
+    }
+  ]
+}
