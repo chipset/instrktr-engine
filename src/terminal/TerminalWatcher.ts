@@ -75,6 +75,14 @@ export class TerminalWatcher implements vscode.Disposable {
           source: 'terminal.run',
         });
       },
+
+      runShell: async (command: string) => {
+        return this._commandRunner.runShell({
+          command,
+          cwd,
+          source: 'terminal.runShell',
+        });
+      },
     };
   }
 

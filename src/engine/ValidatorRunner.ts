@@ -191,6 +191,14 @@ export class ValidatorRunner {
           stepId,
           validatorPath,
         }),
+        runShell: (command: string) => this._commandRunner.runShell({
+          command,
+          cwd,
+          source: 'terminal.runShell',
+          courseId,
+          stepId,
+          validatorPath,
+        }),
       };
       const ctx = buildContext(this._workspaceRoot, scopedTerminal);
       return await Promise.race([fn(ctx), timeout]);
@@ -213,6 +221,13 @@ export class ValidatorRunner {
           command,
           cwd,
           source: 'terminal.run',
+        });
+      },
+      async runShell(command) {
+        return commandRunner.runShell({
+          command,
+          cwd,
+          source: 'terminal.runShell',
         });
       },
     };
