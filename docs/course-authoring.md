@@ -83,9 +83,29 @@ Normal `https://` links open in the system browser as usual.
 
 Standard Markdown **fenced** blocks (triple backticks) render with a **Copy** button in the Active Course panel. Learners click **Copy** and paste into the editor, a new file, or an external terminal. You do not add any special syntax for the button — only normal Markdown fences in `instructions.md`.
 
-**Syntax highlighting:** when you add an optional language tag on the opening fence (e.g. ` ```yaml `), Instrktr highlights the block in the panel using highlight.js, themed to match the VS Code UI.
-
 **What gets a Copy button:** fenced blocks only. Inline `` `code` `` in a sentence does not.
+
+### Syntax highlighting
+
+Instrktr highlights **fenced** code in the Active Course panel using [highlight.js](https://highlightjs.org/). Highlighting is automatic whenever you put a **language identifier** on the **opening** fence line, right after the opening backticks.
+
+**Format (required for highlighting):**
+
+````markdown
+```bash
+echo "hello"
+```
+````
+
+Rules:
+
+1. **Opening fence only** — put the language tag on the first line (` ```bash `). The closing fence is plain ` ``` ` (no tag).
+2. **One word for the language** — use the usual short name: `bash`, `sh`, `yaml`, `json`, `javascript` / `js`, `typescript` / `ts`, `python`, `java`, `sql`, `xml`, `html`, `css`, `dockerfile`, `diff`, `plaintext`, `text`, etc. Extra words on the same line (e.g. editor metadata) are ignored; only the first token is used.
+3. **Case** — prefer lowercase tags (`yaml` not `YAML`); common names are recognized as highlight.js defines them.
+4. **Unknown or missing language** — if the tag is empty or not a known grammar, Instrktr still shows the block and **Copy**, and picks highlighting with **auto-detection** (best-effort).
+5. **Not highlighted** — single-backtick **inline** code, and indented code blocks (if you use them), are not passed through the highlighter the same way; prefer triple-backtick fences for anything you want colored.
+
+The panel theme uses VS Code–aware colors (`highlight-instrktr.css`) so highlighting stays readable in light and dark themes.
 
 #### Example: command learners should run
 
@@ -119,7 +139,7 @@ services:
 ```
 ````
 
-Optional **language tags** (`bash`, `yaml`, `json`, …) are only for readability in the source; copying always uses the plain text of the block.
+Optional **language tags** control **syntax highlighting** in the panel and help readers in the source; the **Copy** button always copies the plain text of the block (no HTML markup).
 
 #### Example: longer snippet (workshop / mainframe-adjacent flows)
 
@@ -135,7 +155,7 @@ Paste this JCL-style job card into your editor and adjust the job name:
 Then save as `hello.jcl` in the workspace root.
 ````
 
-Use a language tag that matches what learners expect (`text`, `jcl`, `sh`, etc.); unsupported tags still render as a monospace block with **Copy**.
+Use a language tag that matches what learners expect (`text`, `jcl`, `sh`, etc.). Unknown tags still get a **Copy** button and **auto-detected** highlighting when possible.
 
 ### Images in instructions
 

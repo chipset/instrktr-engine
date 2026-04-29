@@ -57,7 +57,7 @@ course-my-topic/
 
 ### Instruction panel
 
-Fenced code blocks get **syntax highlighting** (language tag on the fence) and a **Copy** button. Images under the course folder can be referenced with paths relative to `course.json`; remote `https` images work too. See the [Course Authoring Guide](docs/course-authoring.md#writing-instructions).
+Fenced code blocks get **syntax highlighting** (put a [language tag on the opening fence](docs/course-authoring.md#syntax-highlighting)) and a **Copy** button. Images under the course folder can be referenced with paths relative to `course.json`; remote `https` images work too. See the [Course Authoring Guide](docs/course-authoring.md#writing-instructions).
 
 ### Open-file links
 
