@@ -32,7 +32,7 @@ npx gulp hello
 
 Expected output:
 
-```
+```text
 [HH:mm:ss] Using gulpfile .../gulpfile.js
 [HH:mm:ss] Starting 'hello'...
 Gulp is running!

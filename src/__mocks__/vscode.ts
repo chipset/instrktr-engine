@@ -14,6 +14,8 @@ export class Uri {
 
   static parse(value: string): Uri { return new Uri(value); }
 
+  toString(): string { return this.fsPath; }
+
   static joinPath(base: Uri, ...parts: string[]): Uri {
     return new Uri(path.join(base.fsPath, ...parts));
   }
@@ -60,6 +62,11 @@ export const window = {
   showErrorMessage: vi.fn(),
   showWarningMessage: vi.fn(),
   showInformationMessage: vi.fn(),
+};
+
+export const authentication = {
+  getSession: vi.fn(),
+  onDidChangeSessions: vi.fn(() => ({ dispose: vi.fn() })),
 };
 
 export enum FileType {

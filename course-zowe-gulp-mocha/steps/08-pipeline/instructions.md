@@ -4,7 +4,7 @@ In this final step you will assemble all your Gulp tasks into a single `deploy` 
 
 ## The pipeline
 
-```
+```text
 deploy
   └── series
        ├── clean             clear dist/ before starting
@@ -65,7 +65,7 @@ npx gulp --tasks
 
 You should see the `deploy` task with its series chain listed below it:
 
-```
+```text
 [HH:mm:ss] Tasks for .../gulpfile.js
 [HH:mm:ss] ├── clean
 [HH:mm:ss] ├── listElements

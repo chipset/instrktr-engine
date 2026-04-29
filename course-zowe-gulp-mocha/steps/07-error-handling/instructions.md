@@ -25,9 +25,14 @@ Apply the same pattern to `retrieveElement` and `addElement`:
 ```js
 async retrieveElement(name, type, outputPath) {
   try {
-    await execAsync(`zowe endevor retrieve element ${name} ${this.buildBaseArgs()} --type ${type} --to-file ${outputPath}`);
+    await execAsync(
+      `zowe endevor retrieve element ${name} ${this.buildBaseArgs()} ` +
+      `--type ${type} --to-file ${outputPath}`,
+    );
   } catch (err) {
-    throw new Error(`Failed to retrieve element "${name}": ${err.stderr || err.message}`);
+    throw new Error(
+      `Failed to retrieve element "${name}": ${err.stderr || err.message}`,
+    );
   }
 }
 
@@ -35,10 +40,13 @@ async addElement(name, type, sourceFile, ccid, comment) {
   try {
     await execAsync(
       `zowe endevor add element ${name} ${this.buildBaseArgs()} ` +
-      `--type ${type} --from-file ${sourceFile} --ccid "${ccid}" --comment "${comment}"`,
+      `--type ${type} --from-file ${sourceFile} ` +
+      `--ccid "${ccid}" --comment "${comment}"`,
     );
   } catch (err) {
-    throw new Error(`Failed to add element "${name}": ${err.stderr || err.message}`);
+    throw new Error(
+      `Failed to add element "${name}": ${err.stderr || err.message}`,
+    );
   }
 }
 ```

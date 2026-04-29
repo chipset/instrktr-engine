@@ -33,6 +33,8 @@ let hints = [];
 let currentHint = -1;
 let hasSolution = false;
 let checkTimeout = null;
+let presentationMode = false;
+let lastState = null;
 
 function sanitizeHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -74,8 +76,8 @@ function getPrePlainText(pre) {
 async function copyPreToClipboard(pre) {
   const text = getPrePlainText(pre);
   try {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      await navigator.clipboard.writeText(text);
+    if (window.navigator.clipboard && typeof window.navigator.clipboard.writeText === 'function') {
+      await window.navigator.clipboard.writeText(text);
       return true;
     }
   } catch {
@@ -100,6 +102,7 @@ async function copyPreToClipboard(pre) {
 }
 
 function applyState(state) {
+  lastState = state;
   const loaded = state.loaded ?? false;
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
@@ -148,11 +151,11 @@ function applyState(state) {
     stepDots.appendChild(dot);
   }
 
-  hints = state.hints ?? [];
+  hints = presentationMode ? [] : (state.hints ?? []);
   currentHint = -1;
   hintsSection.hidden = true;
-  hintBtn.hidden = hints.length === 0;
-  hasSolution = state.hasSolution ?? false;
+  hintBtn.hidden = presentationMode || hints.length === 0;
+  hasSolution = !presentationMode && (state.hasSolution ?? false);
 
   prevBtn.hidden = state.stepIndex === 0;
 
@@ -163,6 +166,14 @@ function applyState(state) {
   resultEl.hidden = true;
   resultEl.className = 'result';
   compareBtn.hidden = true;
+
+  if (presentationMode) {
+    checkBtn.hidden = false;
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Next';
+    nextBtn.hidden = true;
+    return;
+  }
 
   if (!state.hasValidator) {
     // No validator — skip the check ceremony, go straight to Next Step
@@ -194,7 +205,7 @@ function showResult(result) {
   } else {
     checkBtn.hidden = false;
     nextBtn.hidden = true;
-    compareBtn.hidden = !hasSolution;
+    compareBtn.hidden = presentationMode || !hasSolution;
   }
 }
 
@@ -232,6 +243,11 @@ stepDots.addEventListener('click', (e) => {
 });
 
 checkBtn.addEventListener('click', () => {
+  if (presentationMode) {
+    vscode.postMessage({ command: 'nextStep' });
+    return;
+  }
+
   checkBtn.disabled = true;
   checkBtn.textContent = 'Checking…';
   vscode.postMessage({ command: 'checkWork' });
@@ -280,11 +296,27 @@ restartBtn.addEventListener('click', () => {
   vscode.postMessage({ command: 'restartCourse' });
 });
 
+function applyPresentationMode(enabled) {
+  presentationMode = !!enabled;
+  document.body.classList.toggle('presentation-mode', presentationMode);
+  if (presentationMode) {
+    hintsSection.hidden = true;
+    hintBtn.hidden = true;
+    compareBtn.hidden = true;
+  }
+  if (lastState) {
+    applyState(lastState);
+  }
+}
+
 window.addEventListener('message', (event) => {
   const msg = event.data;
   switch (msg.command) {
     case 'setState':
       applyState(msg.state);
+      break;
+    case 'setPresentationMode':
+      applyPresentationMode(msg.presentationMode);
       break;
     case 'setAuth':
       applyAuth(msg.auth);
@@ -292,8 +324,8 @@ window.addEventListener('message', (event) => {
     case 'checkResult':
       if (checkTimeout) { clearTimeout(checkTimeout); checkTimeout = null; }
       checkBtn.disabled = false;
-      checkBtn.textContent = 'Check My Work';
-      showResult(msg.result);
+      checkBtn.textContent = presentationMode ? 'Next' : 'Check My Work';
+      if (!presentationMode) { showResult(msg.result); }
       break;
   }
 });

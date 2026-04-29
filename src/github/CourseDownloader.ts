@@ -8,6 +8,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
+const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
 
 export class CourseDownloader {
   private readonly _coursesDir: string;
@@ -17,7 +18,12 @@ export class CourseDownloader {
   }
 
   courseDir(courseId: string, version: string): string {
-    return path.join(this._coursesDir, `${courseId}@${version}`);
+    const dest = path.resolve(this._coursesDir, `${courseId}@${version}`);
+    const safeBase = path.resolve(this._coursesDir);
+    if (dest !== safeBase && !dest.startsWith(safeBase + path.sep)) {
+      throw new Error('Course path escapes the courses directory.');
+    }
+    return dest;
   }
 
   isDownloaded(courseId: string, version: string): boolean {
@@ -117,12 +123,21 @@ export class CourseDownloader {
     }
 
     const total = Number(response.headers.get('content-length') ?? 0);
+    if (total > MAX_DOWNLOAD_BYTES) {
+      throw new Error('Downloaded course archive exceeds the 100 MiB size limit.');
+    }
+
     const chunks: Uint8Array[] = [];
+    let downloaded = 0;
 
     const reader = response.body!.getReader();
     while (true) {
       const { done, value } = await reader.read();
       if (done) { break; }
+      downloaded += value.length;
+      if (downloaded > MAX_DOWNLOAD_BYTES) {
+        throw new Error('Downloaded course archive exceeds the 100 MiB size limit.');
+      }
       chunks.push(value);
       if (total > 0) {
         // Download phase gets 70% of the progress bar

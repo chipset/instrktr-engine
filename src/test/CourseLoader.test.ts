@@ -76,7 +76,8 @@ describe('CourseLoader', () => {
   });
 
   it('throws when a required top-level field is missing', async () => {
-    const { title: _dropped, ...noTitle } = validManifest;
+    const noTitle = { ...validManifest };
+    delete (noTitle as Partial<typeof validManifest>).title;
     mockReadFile(noTitle);
     await expect(loader.load('/bad')).rejects.toThrow('missing required field: "title"');
   });

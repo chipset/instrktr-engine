@@ -2,7 +2,7 @@
   "name": "instrktr",
   "displayName": "Instrktr",
   "description": "Interactive course engine — run hands-on coding courses directly inside VS Code",
-  "version": "0.3.10",
+  "version": "0.3.11",
   "publisher": "instrktr",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -64,6 +64,10 @@
       {
         "command": "instrktr.openLocalCourse",
         "title": "Instrktr: Open Local Course Folder"
+      },
+      {
+        "command": "instrktr.startCourse",
+        "title": "Instrktr: Start Course"
       },
       {
         "command": "instrktr.browseCourses",
@@ -148,6 +152,12 @@
           "default": "",
           "description": "Absolute path to a local course folder to automatically start when VS Code opens. Takes precedence over instrktr.startupCourse."
         },
+        "instrktr.presentationMode": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "markdownDescription": "Optimize the Instrktr panel for live presentations: hides sign-in/sync controls, spoiler-oriented learner aids such as hints and solution comparison, and skips validator checks."
+        },
         "instrktr.debugValidatorCommands": {
           "type": "boolean",
           "default": false,
@@ -177,7 +187,7 @@
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.93.0",
     "@vscode/vsce": "^3.0.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.2.1",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.59.1",

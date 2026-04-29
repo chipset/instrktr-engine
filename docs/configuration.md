@@ -52,6 +52,22 @@ Absolute path, or a VS Code-style workspace-relative path, to a local course fol
 
 ---
 
+### `instrktr.presentationMode`
+
+Boolean. Default: `false`. When enabled, Instrktr optimizes the course panel for live presentations or instructor-led demos:
+
+- hides GitHub sign-in/sync controls
+- hides learner hint controls
+- hides and blocks solution comparison from the panel
+- treats validator steps as presentation navigation: the primary **Check My Work** button becomes **Next** and advances without running validators
+- slightly increases panel spacing and type scale for projector readability
+
+```jsonc
+"instrktr.presentationMode": true
+```
+
+Use this when driving a workshop from a projected VS Code window and you want to avoid accidental spoilers and validator interruptions while keeping step navigation available.
+
 ### `instrktr.debugValidatorCommands`
 
 **Type:** `boolean` | **Default:** `false`
@@ -261,5 +277,6 @@ module.exports = async function validate(context) {
 | `instrktr.registryUrl` | string | `""` | User / Workspace |
 | `instrktr.startupCourse` | string | `""` | User / Workspace |
 | `instrktr.localCoursePath` | string | `""` | User / Workspace |
+| `instrktr.presentationMode` | boolean | `false` | User / Workspace |
 | `instrktr.debugValidatorCommands` | boolean | `false` | User / Workspace |
 | `instrktr.disableValidatorCommandSecurityChecks` | boolean | `false` | User |

@@ -1,9 +1,9 @@
 import * as path from 'path';
-import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as vm from 'vm';
 import * as vscode from 'vscode';
 import { CheckResult } from './types';
-import { buildContext, TerminalAPI } from '../context/ValidatorContext';
+import { buildContext, TerminalAPI, ValidatorContext } from '../context/ValidatorContext';
 import {
   AllowAllCommandPermissionService,
   CommandPermissionService,
@@ -31,6 +31,16 @@ const BLOCKED_MODULES = new Set([
 ]);
 
 const VALIDATOR_TIMEOUT_MS = 30_000;
+
+interface SandboxModule {
+  exports: unknown;
+}
+
+interface SandboxRuntime {
+  cache: Map<string, SandboxModule>;
+  context: vm.Context;
+  courseDir: string;
+}
 
 export class ValidatorRunner {
   private readonly _commandRunner: SecureCommandRunner;
@@ -139,34 +149,15 @@ export class ValidatorRunner {
     stepId?: string,
   ): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
+    let runtime: SandboxRuntime;
     try {
-      const src = await fs.readFile(validatorPath, 'utf8');
-      const validatorDir = path.dirname(validatorPath);
-
-      // Build a require that blocks dangerous built-in modules.
-      // cache is intentionally omitted — exposing require.cache would allow
-      // a validator to poison modules for subsequent require() calls.
-      const safeRequire = Object.assign(
-        (id: string) => {
-          if (BLOCKED_MODULES.has(id)) {
-            throw new Error(`Validator cannot require('${id}') — blocked for security.`);
-          }
-          const resolved = id.startsWith('.') ? path.resolve(validatorDir, id) : id;
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          return require(resolved);
-        },
-        { resolve: require.resolve, main: require.main },
+      const courseDir = path.dirname(path.dirname(validatorPath));
+      runtime = this._createSandboxRuntime(courseDir);
+      const mod = this._loadSandboxModule(
+        path.resolve(validatorPath),
+        runtime,
       );
-
-      const mod = { exports: {} as Record<string, unknown> };
-      // vm.runInThisContext gives the script the current global (process, Buffer, etc.)
-      // but injects our safeRequire so the module-level require is intercepted.
-      const wrapper = vm.runInThisContext(
-        `(function(require, module, exports, __filename, __dirname) { ${src}\n })`,
-        { filename: validatorPath },
-      );
-      wrapper(safeRequire, mod, mod.exports, validatorPath, validatorDir);
-      fn = mod.exports as unknown as typeof fn;
+      fn = mod.exports as typeof fn;
     } catch (err) {
       return { status: 'fail', message: `Could not load validator: ${err}` };
     }
@@ -201,10 +192,210 @@ export class ValidatorRunner {
         }),
       };
       const ctx = buildContext(this._workspaceRoot, scopedTerminal);
-      return await Promise.race([fn(ctx), timeout]);
+      return await Promise.race([this._invokeSandboxValidator(fn, ctx, runtime), timeout]);
     } catch (err) {
       return { status: 'fail', message: String(err) };
     }
+  }
+
+  private _createSandboxRuntime(courseDir: string): SandboxRuntime {
+    return {
+      cache: new Map<string, SandboxModule>(),
+      context: vm.createContext(Object.create(null)),
+      courseDir: path.resolve(courseDir),
+    };
+  }
+
+  private _loadSandboxModule(
+    modulePath: string,
+    runtime: SandboxRuntime,
+  ): SandboxModule {
+    const resolvedPath = this._resolveSandboxModulePath(modulePath, runtime.courseDir);
+    const cached = runtime.cache.get(resolvedPath);
+    if (cached) { return cached; }
+
+    const mod = vm.runInContext('({ exports: {} })', runtime.context) as SandboxModule;
+    runtime.cache.set(resolvedPath, mod);
+
+    if (resolvedPath.endsWith('.json')) {
+      const json = fsSync.readFileSync(resolvedPath, 'utf8');
+      mod.exports = vm.runInContext(
+        `JSON.parse(${JSON.stringify(json)})`,
+        runtime.context,
+      ) as unknown;
+      return mod;
+    }
+
+    const src = fsSync.readFileSync(resolvedPath, 'utf8');
+    const moduleDir = path.dirname(resolvedPath);
+    const sandboxRequire = this._buildSandboxRequire(moduleDir, runtime);
+
+    const wrapper = new vm.Script(
+      `(function(__hostRequire, module, __filename, __dirname) {
+        const require = (id) => __hostRequire(String(id));
+        const exports = module.exports;
+        (function(require, module, exports, __filename, __dirname) { 'use strict'; ${src}\n })(require, module, exports, __filename, __dirname);
+        return module.exports;
+      })`,
+      { filename: resolvedPath },
+    );
+    const fn = wrapper.runInContext(runtime.context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+      require: (id: string) => unknown,
+      module: SandboxModule,
+      __filename: string,
+      __dirname: string,
+    ) => unknown;
+    mod.exports = fn(sandboxRequire, mod, resolvedPath, moduleDir);
+    return mod;
+  }
+
+  private _buildSandboxRequire(
+    moduleDir: string,
+    runtime: SandboxRuntime,
+  ) {
+    const requireFn = (id: string) => {
+      if (BLOCKED_MODULES.has(id)) {
+        throw new Error(`Validator cannot require('${id}') — blocked for security.`);
+      }
+      if (!id.startsWith('.')) {
+        throw new Error(`Validator cannot require('${id}') — only relative files inside the course directory are allowed.`);
+      }
+
+      const candidate = path.resolve(moduleDir, id);
+      const resolved = this._resolveModuleCandidate(candidate, runtime.courseDir);
+      return this._loadSandboxModule(resolved, runtime).exports;
+    };
+
+    Object.defineProperty(requireFn, 'resolve', {
+      value: (id: string) => {
+        if (!id.startsWith('.')) {
+          throw new Error(`Validator cannot resolve('${id}') — only relative files are allowed.`);
+        }
+        return this._resolveModuleCandidate(path.resolve(moduleDir, id), runtime.courseDir);
+      },
+    });
+
+    return requireFn;
+  }
+
+  private _resolveModuleCandidate(candidate: string, courseDir: string): string {
+    const courseRoot = path.resolve(courseDir);
+    const probes = [
+      candidate,
+      `${candidate}.js`,
+      `${candidate}.json`,
+      path.join(candidate, 'index.js'),
+      path.join(candidate, 'index.json'),
+    ].map((p) => path.resolve(p));
+
+    for (const probe of probes) {
+      if (probe !== courseRoot && !probe.startsWith(courseRoot + path.sep)) {
+        continue;
+      }
+      try {
+        const stat = fsSync.statSync(probe);
+        if (stat.isFile()) {
+          return probe;
+        }
+      } catch {
+        // try the next probe
+      }
+    }
+
+    throw new Error(`Validator module "${candidate}" could not be resolved inside the course directory.`);
+  }
+
+  private _resolveSandboxModulePath(modulePath: string, courseDir: string): string {
+    return this._resolveModuleCandidate(modulePath, courseDir);
+  }
+
+  private async _invokeSandboxValidator(
+    validatorFn: (ctx: ValidatorContext) => Promise<CheckResult>,
+    hostContext: ValidatorContext,
+    runtime: SandboxRuntime,
+  ): Promise<CheckResult> {
+    const bridge = (op: string, args: unknown[]): unknown => {
+      switch (op) {
+        case 'files.exists':
+          return hostContext.files.exists(this._expectStringArg(args, 0, op));
+        case 'files.read':
+          return hostContext.files.read(this._expectStringArg(args, 0, op));
+        case 'files.matches':
+          return hostContext.files.matches(
+            this._expectStringArg(args, 0, op),
+            this._expectRegExpArg(args, 1, op),
+          );
+        case 'files.list':
+          return hostContext.files.list(this._expectStringArg(args, 0, op));
+        case 'terminal.lastCommand':
+          return hostContext.terminal.lastCommand();
+        case 'terminal.outputContains':
+          return hostContext.terminal.outputContains(this._expectStringArg(args, 0, op));
+        case 'terminal.run':
+          return hostContext.terminal.run(this._expectStringArg(args, 0, op));
+        case 'terminal.runShell':
+          return hostContext.terminal.runShell(this._expectStringArg(args, 0, op));
+        case 'env.get':
+          return hostContext.env.get(this._expectStringArg(args, 0, op));
+        case 'workspace.getConfig':
+          return hostContext.workspace.getConfig(this._expectStringArg(args, 0, op));
+        default:
+          throw new Error(`Unknown validator bridge operation: ${op}`);
+      }
+    };
+
+    const invoke = new vm.Script(
+      `(async function(__validator, __bridge) {
+        const bridgeAsync = (op) => (...args) => Promise.resolve(__bridge(op, args));
+        const ctx = {
+          files: {
+            exists: bridgeAsync('files.exists'),
+            read: bridgeAsync('files.read'),
+            matches: bridgeAsync('files.matches'),
+            list: bridgeAsync('files.list'),
+          },
+          terminal: {
+            lastCommand: bridgeAsync('terminal.lastCommand'),
+            outputContains: bridgeAsync('terminal.outputContains'),
+            run: bridgeAsync('terminal.run'),
+            runShell: bridgeAsync('terminal.runShell'),
+          },
+          env: {
+            get: (name) => __bridge('env.get', [name]),
+          },
+          workspace: {
+            getConfig: bridgeAsync('workspace.getConfig'),
+          },
+          pass: (message) => ({ status: 'pass', message }),
+          fail: (message) => ({ status: 'fail', message }),
+          warn: (message) => ({ status: 'warn', message }),
+        };
+        return await __validator(ctx);
+      })`,
+    );
+
+    const run = invoke.runInContext(runtime.context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+      validator: (ctx: ValidatorContext) => Promise<CheckResult>,
+      bridge: (op: string, args: unknown[]) => unknown,
+    ) => Promise<CheckResult>;
+
+    return await run(validatorFn, bridge);
+  }
+
+  private _expectStringArg(args: unknown[], index: number, op: string): string {
+    const value = args[index];
+    if (typeof value !== 'string') {
+      throw new Error(`${op} expects argument ${index + 1} to be a string.`);
+    }
+    return value;
+  }
+
+  private _expectRegExpArg(args: unknown[], index: number, op: string): RegExp {
+    const value = args[index];
+    if (Object.prototype.toString.call(value) !== '[object RegExp]') {
+      throw new Error(`${op} expects argument ${index + 1} to be a RegExp.`);
+    }
+    return value as RegExp;
   }
 
   static buildTerminalAPI(
