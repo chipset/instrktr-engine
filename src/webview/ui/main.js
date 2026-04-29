@@ -50,6 +50,71 @@ function sanitizeHtml(html) {
   return doc.body.innerHTML;
 }
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function highlightCodeBlocks(root) {
+  root.querySelectorAll('pre code').forEach((code) => {
+    const lang = [...code.classList]
+      .find((name) => name.startsWith('language-'))
+      ?.replace('language-', '');
+    const highlighted = highlightCode(code.textContent ?? '', lang);
+    code.innerHTML = highlighted;
+    if (lang) { code.dataset.lang = lang; }
+  });
+}
+
+function highlightCode(source, lang) {
+  if (lang === 'js' || lang === 'javascript') {
+    return highlightWithPattern(source, /(\/\/.*|\/\*[\s\S]*?\*\/|(["'`])(?:\\[\s\S]|(?!\2)[^\\])*\2|\b(?:async|await|class|const|exports|function|let|module|new|require|return|throw|try|catch|var)\b|\b\d+(?:\.\d+)?\b)/g, classifyJsToken);
+  }
+  if (lang === 'json') {
+    return highlightWithPattern(source, /(("(?:\\.|[^"\\])*")(?=\s*:)|"(?:\\.|[^"\\])*"|\b(?:true|false|null)\b|-?\b\d+(?:\.\d+)?\b)/g, classifyJsonToken);
+  }
+  if (lang === 'bash' || lang === 'sh' || lang === 'shell') {
+    return highlightWithPattern(source, /(#.*|(["'])(?:\\[\s\S]|(?!\2)[^\\])*\2|\b(?:npm|npx|zowe|gulp|mocha|node)\b|--[A-Za-z0-9-]+|\b\d+\b)/g, classifyShellToken);
+  }
+  return escapeHtml(source);
+}
+
+function highlightWithPattern(source, pattern, classify) {
+  let html = '';
+  let lastIndex = 0;
+  for (const match of source.matchAll(pattern)) {
+    html += escapeHtml(source.slice(lastIndex, match.index));
+    const token = match[0];
+    html += `<span class="tok-${classify(token)}">${escapeHtml(token)}</span>`;
+    lastIndex = match.index + token.length;
+  }
+  return html + escapeHtml(source.slice(lastIndex));
+}
+
+function classifyJsToken(token) {
+  if (token.startsWith('//') || token.startsWith('/*')) { return 'comment'; }
+  if (/^["'`]/.test(token)) { return 'string'; }
+  if (/^\d/.test(token)) { return 'number'; }
+  return 'keyword';
+}
+
+function classifyJsonToken(token) {
+  if (/^"/.test(token) && /"$/.test(token)) { return token.endsWith('"') ? 'string' : 'plain'; }
+  if (/^(true|false|null)$/.test(token)) { return 'keyword'; }
+  return 'number';
+}
+
+function classifyShellToken(token) {
+  if (token.startsWith('#')) { return 'comment'; }
+  if (/^["']/.test(token)) { return 'string'; }
+  if (token.startsWith('--')) { return 'attr'; }
+  if (/^\d+$/.test(token)) { return 'number'; }
+  return 'keyword';
+}
+
 function applyState(state) {
   lastState = state;
   const loaded = state.loaded ?? false;
@@ -85,6 +150,7 @@ function applyState(state) {
   courseTitle.textContent = state.courseTitle;
   stepTitle.textContent = state.title;
   instructions.innerHTML = sanitizeHtml(state.instructionsHtml);
+  highlightCodeBlocks(instructions);
 
   // Render step dots — clickable
   stepDots.innerHTML = '';

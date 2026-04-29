@@ -8,7 +8,7 @@ In this course you will build a JavaScript-based mainframe DevOps pipeline that:
 
 ## What you will build
 
-```
+```text
 my-project/
 ├── gulpfile.js             ← Gulp tasks (list, retrieve, test, deploy)
 ├── zowe.config.json        ← Zowe connection profiles

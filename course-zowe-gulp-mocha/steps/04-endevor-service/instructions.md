@@ -8,11 +8,20 @@ The skeleton in [src/endevor.js](open:src/endevor.js) already has the constructo
 
 ```js
 class EndevorService {
-  constructor(config)                                      // { instance, environment, system, subsystem, stageNumber }
-  buildBaseArgs()                                          // returns the common CLI flags (done for you)
-  async listElements()                                     // returns array of element objects
-  async retrieveElement(name, type, outputPath)            // retrieves one element to a local file
-  async addElement(name, type, sourceFile, ccid, comment)  // adds/updates an element in Endevor
+  // config: { instance, environment, system, subsystem, stageNumber }
+  constructor(config) {}
+
+  // Returns the common CLI flags. This method is done for you.
+  buildBaseArgs() {}
+
+  // Returns an array of element objects from Zowe JSON output.
+  async listElements() {}
+
+  // Retrieves one element to a local file.
+  async retrieveElement(name, type, outputPath) {}
+
+  // Adds or updates an element in Endevor from a local file.
+  async addElement(name, type, sourceFile, ccid, comment) {}
 }
 ```
 

@@ -175,6 +175,27 @@ body {
   padding: 0;
 }
 
+.instructions pre code .tok-keyword {
+  color: var(--vscode-symbolIcon-keywordForeground, #c586c0);
+}
+
+.instructions pre code .tok-string {
+  color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+}
+
+.instructions pre code .tok-comment {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.instructions pre code .tok-number {
+  color: var(--vscode-symbolIcon-numberForeground, #b5cea8);
+}
+
+.instructions pre code .tok-attr {
+  color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+}
+
 /* open: file links render as clickable file chips */
 .instructions a[href^="open:"] {
   display: inline-flex;
