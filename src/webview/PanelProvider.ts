@@ -11,6 +11,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private _lastState?: StepState;
   private _lastAuth?: AuthState;
+  private _presentationMode = this._readPresentationMode();
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -33,6 +34,10 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 
     webviewView.onDidChangeVisibility(() => {
       if (!webviewView.visible) { return; }
+      webviewView.webview.postMessage({
+        command: 'setPresentationMode',
+        presentationMode: this._presentationMode,
+      });
       if (this._lastState) {
         webviewView.webview.postMessage({ command: 'setState', state: this._lastState });
       }
@@ -44,6 +49,10 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message.command) {
         case 'ready':
+          webviewView.webview.postMessage({
+            command: 'setPresentationMode',
+            presentationMode: this._presentationMode,
+          });
           if (this._lastState) {
             webviewView.webview.postMessage({ command: 'setState', state: this._lastState });
           }
@@ -105,6 +114,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
         }
 
         case 'openSolution': {
+          if (this._presentationMode) { break; }
           const solutionDir = this._runner.currentStepSolutionDir();
           if (!solutionDir) { break; }
           const files = await listFilesRecursive(vscode.Uri.file(solutionDir));
@@ -146,6 +156,20 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   private _setAuth(auth: AuthState) {
     this._lastAuth = auth;
     this._view?.webview.postMessage({ command: 'setAuth', auth });
+  }
+
+  refreshPresentationMode() {
+    this._presentationMode = this._readPresentationMode();
+    this._view?.webview.postMessage({
+      command: 'setPresentationMode',
+      presentationMode: this._presentationMode,
+    });
+  }
+
+  private _readPresentationMode(): boolean {
+    return vscode.workspace
+      .getConfiguration('instrktr')
+      .get<boolean>('presentationMode', false);
   }
 
   private _getHtml(webview: vscode.Webview): string {

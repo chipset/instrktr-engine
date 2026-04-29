@@ -136,6 +136,7 @@ Sign in with GitHub (**Instrktr: Sign in with GitHub**) to sync your progress ac
 | `instrktr.registryUrl` | URL to a `registry.json` file that populates the course catalog |
 | `instrktr.startupCourse` | Course ID to auto-install and start on VS Code open |
 | `instrktr.localCoursePath` | Absolute or `${workspaceFolder}`-relative path to a local course folder (opens in dev watch mode) |
+| `instrktr.presentationMode` | Optimize the panel for live presentations by hiding sync controls, hints, and solution comparison |
 
 See the [Configuration Reference](docs/configuration.md) for full details, scope rules, workshop setup, and monorepo patterns.
 

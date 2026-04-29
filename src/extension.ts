@@ -260,6 +260,11 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(CatalogProvider.viewId, catalogProvider),
     vscode.window.registerWebviewViewProvider(PanelProvider.viewId, panelProvider),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('instrktr.presentationMode')) {
+        panelProvider.refreshPresentationMode();
+      }
+    }),
   );
 
   // Auto-start from settings
