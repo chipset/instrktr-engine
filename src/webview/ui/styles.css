@@ -343,3 +343,29 @@ body {
 .btn-ghost:not(:disabled):hover {
   background: var(--vscode-button-secondaryHoverBackground);
 }
+
+
+/* Presentation mode keeps the panel focused on live instruction. */
+body.presentation-mode {
+  font-size: calc(var(--vscode-font-size) * 1.12);
+}
+
+body.presentation-mode .panel {
+  gap: 20px;
+  padding: 20px;
+}
+
+body.presentation-mode .auth-bar,
+body.presentation-mode #hint-btn,
+body.presentation-mode #hints-section,
+body.presentation-mode #compare-btn {
+  display: none !important;
+}
+
+body.presentation-mode .instructions {
+  line-height: 1.8;
+}
+
+body.presentation-mode .step-title {
+  font-size: 18px;
+}
