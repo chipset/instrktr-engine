@@ -60,6 +60,11 @@ export const window = {
   showInformationMessage: vi.fn(),
 };
 
+export const authentication = {
+  getSession: vi.fn(),
+  onDidChangeSessions: vi.fn(() => ({ dispose: vi.fn() })),
+};
+
 export enum FileType {
   File = 1,
   Directory = 2,

@@ -11,8 +11,17 @@ import { AuthManager } from './github/AuthManager';
 import { GistSync } from './github/GistSync';
 import { RegistryCourse } from './engine/types';
 import { disposeLogger } from './logger';
+import { CourseWorkspaceManager } from './engine/CourseWorkspaceManager';
+import {
+  CourseLaunchState,
+  matchesLaunchWorkspace,
+  shouldSwitchToLearnerWorkspace,
+} from './engine/WorkspaceLaunchResolver';
 import { resolveBundledDefaultCourse, resolveCourseDirectory } from './engine/CoursePathResolver';
 import { VSCodeCommandPermissionService } from './security/CommandPermissionService';
+
+const PENDING_LAUNCH_KEY = 'pendingCourseLaunch';
+const WORKSPACE_BINDINGS_KEY = 'courseWorkspaceBindings';
 
 export async function activate(context: vscode.ExtensionContext) {
   let workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri
@@ -23,8 +32,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const auth = new AuthManager();
   const progressStore = new ProgressStore(context.globalStorageUri);
   const gistSync = new GistSync(context.globalState);
+  const workspaces = new CourseWorkspaceManager(context.globalStorageUri);
   const commandPermissions = new VSCodeCommandPermissionService(context.globalState);
-  const runner = new StepRunner(workspaceRoot, progressStore, commandPermissions);
+  const runner = new StepRunner(workspaceRoot, progressStore, workspaces, commandPermissions);
   context.subscriptions.push(auth);
   const terminalWatcher = new TerminalWatcher(workspaceRoot, commandPermissions);
   const registry = new RegistryFetcher(context.globalStorageUri);
@@ -32,8 +42,22 @@ export async function activate(context: vscode.ExtensionContext) {
   const downloader = new CourseDownloader(context.globalStorageUri);
   await Promise.all([installed.load(), progressStore.load(), auth.loadSilent()]);
 
+  const workspaceBindings = context.globalState.get<Record<string, CourseLaunchState>>(
+    WORKSPACE_BINDINGS_KEY,
+    {},
+  );
+
+  async function bindWorkspaceToCourse(workspaceFsPath: string, courseDir: string, devMode: boolean) {
+    const bindings = context.globalState.get<Record<string, CourseLaunchState>>(
+      WORKSPACE_BINDINGS_KEY,
+      {},
+    );
+    bindings[workspaceFsPath] = { courseDir, devMode, workspaceFsPath };
+    await context.globalState.update(WORKSPACE_BINDINGS_KEY, bindings);
+  }
+
   // Pull Gist on startup if already signed in
-  const initialToken = auth.state.token;
+  const initialToken = auth.accessToken;
   if (initialToken) {
     gistSync.pull(initialToken, progressStore.all()).then((merged) => {
       if (merged) { progressStore.applyMerge(merged); }
@@ -42,8 +66,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Pull Gist whenever the user signs in
   auth.onDidChangeState(async (authState) => {
-    if (authState.signedIn && authState.token) {
-      const merged = await gistSync.pull(authState.token, progressStore.all());
+    const token = auth.accessToken;
+    if (authState.signedIn && token) {
+      const merged = await gistSync.pull(token, progressStore.all());
       if (merged) { await progressStore.applyMerge(merged); }
     }
   });
@@ -67,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   runner.onStepPass(() => {
-    const token = auth.state.token;
+    const token = auth.accessToken;
     if (token) { gistSync.debouncedPush(token, progressStore.all()); }
   });
 
@@ -75,18 +100,6 @@ export async function activate(context: vscode.ExtensionContext) {
     const openWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (openWorkspaceRoot) {
       workspaceRoot = openWorkspaceRoot;
-    } else if (workspaceRoot.fsPath === context.extensionUri.fsPath) {
-      const picks = await vscode.window.showOpenDialog({
-        canSelectFiles: false,
-        canSelectFolders: true,
-        canSelectMany: false,
-        openLabel: 'Use Folder for Course Files',
-        title: 'Select a folder for Instrktr course files',
-      });
-      if (!picks || picks.length === 0) {
-        throw new Error('No workspace folder selected. Instrktr needs a folder for course files before starting a course.');
-      }
-      workspaceRoot = picks[0];
     }
 
     runner.setWorkspaceRoot(workspaceRoot);
@@ -94,15 +107,45 @@ export async function activate(context: vscode.ExtensionContext) {
     return workspaceRoot;
   }
 
-  async function startCourse(coursePath: string, devMode = false) {
+  async function startCourse(
+    coursePath: string,
+    devMode = false,
+    opts: { skipWorkspaceSwitch?: boolean } = {},
+  ) {
     try {
       const courseDir = await resolveCourseDirectory(coursePath, {
         workspaceFolders: vscode.workspace.workspaceFolders,
       });
       await ensureWorkspaceRoot();
+
+      const learnerWorkspace = devMode ? workspaceRoot : await workspaces.prepare(courseDir);
+      if (!opts.skipWorkspaceSwitch && shouldSwitchToLearnerWorkspace(
+        workspaceRoot.fsPath,
+        learnerWorkspace.fsPath,
+        devMode,
+      )) {
+        await context.globalState.update(PENDING_LAUNCH_KEY, {
+          courseDir,
+          devMode,
+          workspaceFsPath: learnerWorkspace.fsPath,
+        } satisfies CourseLaunchState);
+        try {
+          await vscode.commands.executeCommand('vscode.openFolder', learnerWorkspace, {
+            forceNewWindow: false,
+            noRecentEntry: true,
+          });
+        } catch (err) {
+          await context.globalState.update(PENDING_LAUNCH_KEY, undefined);
+          throw err;
+        }
+        return;
+      }
+
+      await runner.loadCourse(courseDir, devMode, { workspaceRoot: learnerWorkspace });
+      terminalWatcher.setWorkspaceRoot(runner.workspaceRoot);
       terminalWatcher.start();
       runner.setTerminalAPI(terminalWatcher.buildAPI());
-      await runner.loadCourse(courseDir, devMode);
+      await bindWorkspaceToCourse(runner.workspaceRoot.fsPath, courseDir, devMode);
       vscode.commands.executeCommand('instrktr.panel.focus');
       if (devMode) {
         vscode.window.showInformationMessage(
@@ -223,7 +266,14 @@ export async function activate(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration('instrktr');
   const localPath = cfg.get<string>('localCoursePath', '').trim();
   const startupCourseId = cfg.get<string>('startupCourse', '').trim();
-  if (localPath) {
+  const pendingLaunch = context.globalState.get<CourseLaunchState | undefined>(PENDING_LAUNCH_KEY);
+  if (matchesLaunchWorkspace(workspaceRoot.fsPath, pendingLaunch)) {
+    await context.globalState.update(PENDING_LAUNCH_KEY, undefined);
+    await startCourse(pendingLaunch!.courseDir, pendingLaunch!.devMode, { skipWorkspaceSwitch: true });
+  } else if (workspaceBindings[workspaceRoot.fsPath]) {
+    const launch = workspaceBindings[workspaceRoot.fsPath];
+    await startCourse(launch.courseDir, launch.devMode, { skipWorkspaceSwitch: true });
+  } else if (localPath) {
     await startCourse(localPath, true);
   } else if (startupCourseId) {
     installed.load().then(async () => {
@@ -252,6 +302,50 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('instrktr.startCourse', async () => {
+      const installedCourses = installed.all().sort((a, b) => a.id.localeCompare(b.id));
+      const items: Array<
+        | { label: string; description: string; action: 'browse' | 'local' }
+        | { label: string; description: string; action: 'installed'; courseId: string }
+      > = [
+        {
+          label: 'Browse Course Catalog',
+          description: 'Install or start a course from the configured registry',
+          action: 'browse',
+        },
+        {
+          label: 'Open Local Course Folder',
+          description: 'Author or run a course from a local folder',
+          action: 'local',
+        },
+        ...installedCourses.map((entry) => ({
+          label: entry.id,
+          description: `Installed course v${entry.version}`,
+          action: 'installed' as const,
+          courseId: entry.id,
+        })),
+      ];
+
+      const pick = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Start a course…',
+      });
+      if (!pick) { return; }
+
+      if (pick.action === 'browse') {
+        vscode.commands.executeCommand('instrktr.catalog.focus');
+        return;
+      }
+
+      if (pick.action === 'local') {
+        vscode.commands.executeCommand('instrktr.openLocalCourse');
+        return;
+      }
+
+      if (pick.action === 'installed') {
+        await startInstalledCourse(pick.courseId);
+      }
+    }),
+
     vscode.commands.registerCommand('instrktr.openLocalCourse', async () => {
       const uris = await vscode.window.showOpenDialog({
         canSelectFiles: false,

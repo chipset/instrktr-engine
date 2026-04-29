@@ -66,6 +66,10 @@
         "title": "Instrktr: Open Local Course Folder"
       },
       {
+        "command": "instrktr.startCourse",
+        "title": "Instrktr: Start Course"
+      },
+      {
         "command": "instrktr.browseCourses",
         "title": "Instrktr: Browse Courses"
       },

@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 export interface AuthState {
   signedIn: boolean;
   username?: string;
-  token?: string;
+  error?: string;
 }
 
 export class AuthManager implements vscode.Disposable {
@@ -28,8 +28,11 @@ export class AuthManager implements vscode.Disposable {
     return {
       signedIn: true,
       username: this._session.account.label,
-      token: this._session.accessToken,
     };
+  }
+
+  get accessToken(): string | undefined {
+    return this._session?.accessToken;
   }
 
   /** Silently check for an existing session — never prompts. */
