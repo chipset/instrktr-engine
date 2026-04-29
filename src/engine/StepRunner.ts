@@ -70,7 +70,11 @@ export class StepRunner {
     });
   }
 
-  async loadCourse(courseDir: string, devMode = false): Promise<void> {
+  async loadCourse(
+    courseDir: string,
+    devMode = false,
+    opts: { workspaceRoot?: vscode.Uri } = {},
+  ): Promise<void> {
     const loadGeneration = ++this._loadGeneration;
     this._courseWatcher?.dispose();
     this._courseWatcher = undefined;
@@ -85,9 +89,13 @@ export class StepRunner {
     const course = await this._loader.load(courseDir);
     if (loadGeneration !== this._loadGeneration) { return; }
 
+    const workspaceRoot = opts.workspaceRoot
+      ?? (devMode ? this._workspaceRoot : await this._workspaces.prepare(courseDir));
+    if (loadGeneration !== this._loadGeneration) { return; }
+
     this._course = course;
     this._courseDir = courseDir;
-    this._workspaceRoot = await this._workspaces.prepare(courseDir);
+    this._workspaceRoot = workspaceRoot;
     this._scaffolder = new FileScaffolder(this._workspaceRoot);
     this._validatorRunner = new ValidatorRunner(this._workspaceRoot, this._permissions);
     this._terminal = ValidatorRunner.buildTerminalAPI(this._workspaceRoot, this._permissions);

@@ -118,7 +118,7 @@ export async function activate(context: vscode.ExtensionContext) {
       });
       await ensureWorkspaceRoot();
 
-      const learnerWorkspace = await workspaces.prepare(courseDir);
+      const learnerWorkspace = devMode ? workspaceRoot : await workspaces.prepare(courseDir);
       if (!opts.skipWorkspaceSwitch && shouldSwitchToLearnerWorkspace(
         workspaceRoot.fsPath,
         learnerWorkspace.fsPath,
@@ -129,14 +129,19 @@ export async function activate(context: vscode.ExtensionContext) {
           devMode,
           workspaceFsPath: learnerWorkspace.fsPath,
         } satisfies CourseLaunchState);
-        await vscode.commands.executeCommand('vscode.openFolder', learnerWorkspace, {
-          forceNewWindow: false,
-          noRecentEntry: true,
-        });
+        try {
+          await vscode.commands.executeCommand('vscode.openFolder', learnerWorkspace, {
+            forceNewWindow: false,
+            noRecentEntry: true,
+          });
+        } catch (err) {
+          await context.globalState.update(PENDING_LAUNCH_KEY, undefined);
+          throw err;
+        }
         return;
       }
 
-      await runner.loadCourse(courseDir, devMode);
+      await runner.loadCourse(courseDir, devMode, { workspaceRoot: learnerWorkspace });
       terminalWatcher.setWorkspaceRoot(runner.workspaceRoot);
       terminalWatcher.start();
       runner.setTerminalAPI(terminalWatcher.buildAPI());

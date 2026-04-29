@@ -129,4 +129,86 @@ describe('StepRunner course switching', () => {
     expect('courseComplete' in loadedStates[0] ? loadedStates[0].courseComplete : false).toBe(false);
     expect(progress.setCurrentStep).toHaveBeenCalledWith('recovered-course', 0);
   });
+  it('ignores stale workspace preparation from an older course load', async () => {
+    const oldDir = await writeCourseDir('Old Workspace');
+    const newDir = await writeCourseDir('New Workspace');
+    const oldWorkspace = new Deferred<ReturnType<typeof Uri.file>>();
+
+    const progress = {
+      start: vi.fn(async (course: CourseDef) => ({
+        migrated: false,
+        progress: {
+          courseId: course.id,
+          version: course.version,
+          currentStep: 0,
+          completedSteps: [],
+          startedAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+        },
+      })),
+      setCurrentStep: vi.fn(),
+      markStepComplete: vi.fn(),
+      reset: vi.fn(),
+    };
+
+    const workspaces = {
+      prepare: vi.fn((dir: string) => {
+        if (dir === oldDir) { return oldWorkspace.promise; }
+        if (dir === newDir) { return Promise.resolve(Uri.file('/workspace-new')); }
+        return Promise.reject(new Error(`unexpected dir ${dir}`));
+      }),
+      workspaceDirName: vi.fn(() => 'course-workspace'),
+    } as unknown as CourseWorkspaceManager;
+
+    const runner = new StepRunner(Uri.file('/workspace') as never, progress as never, workspaces);
+    const states: StepState[] = [];
+    runner.onStateChange((state) => states.push(state));
+    (runner as unknown as { _loader: { load: (dir: string) => Promise<CourseDef> } })._loader = {
+      load: (dir: string) => Promise.resolve(
+        dir === oldDir
+          ? makeCourse('old-course', 'Old Workspace')
+          : makeCourse('new-course', 'New Workspace'),
+      ),
+    };
+
+    const oldPromise = runner.loadCourse(oldDir);
+    await Promise.resolve();
+    await runner.loadCourse(newDir);
+    oldWorkspace.resolve(Uri.file('/workspace-old'));
+    await oldPromise;
+
+    expect(states.filter((state) => state.loaded).map((state) => state.courseTitle)).toEqual(['New Workspace']);
+    expect(runner.workspaceRoot.fsPath).toBe('/workspace-new');
+  });
+
+  it('keeps the current workspace in dev mode instead of preparing a learner workspace', async () => {
+    const courseDir = await writeCourseDir('Dev Course');
+    const progress = {
+      start: vi.fn(async (course: CourseDef) => ({
+        migrated: false,
+        progress: {
+          courseId: course.id,
+          version: course.version,
+          currentStep: 0,
+          completedSteps: [],
+          startedAt: new Date().toISOString(),
+          lastActiveAt: new Date().toISOString(),
+        },
+      })),
+      setCurrentStep: vi.fn(),
+      markStepComplete: vi.fn(),
+      reset: vi.fn(),
+    };
+    const workspaces = makeWorkspaceManager('/hidden-learner-workspace');
+    const runner = new StepRunner(Uri.file('/source-workspace') as never, progress as never, workspaces);
+    (runner as unknown as { _loader: { load: () => Promise<CourseDef> } })._loader = {
+      load: () => Promise.resolve(makeCourse('dev-course', 'Dev Course')),
+    };
+
+    await runner.loadCourse(courseDir, true);
+
+    expect(workspaces.prepare).not.toHaveBeenCalled();
+    expect(runner.workspaceRoot.fsPath).toBe('/source-workspace');
+  });
+
 });
