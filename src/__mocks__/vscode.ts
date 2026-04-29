@@ -28,7 +28,17 @@ export const workspace = {
   getConfiguration: vi.fn().mockReturnValue({
     get: vi.fn().mockReturnValue(''),
   }),
+  createFileSystemWatcher: vi.fn().mockReturnValue({
+    onDidChange: vi.fn(),
+    onDidCreate: vi.fn(),
+    onDidDelete: vi.fn(),
+    dispose: vi.fn(),
+  }),
 };
+
+export class RelativePattern {
+  constructor(public base: Uri, public pattern: string) {}
+}
 
 export class EventEmitter<T> {
   private _listeners: Array<(v: T) => void> = [];

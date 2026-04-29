@@ -1,0 +1,11 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report program
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+
+  W
+* (working storage fields go here)
+
+  P
+* (procedure logic goes here)

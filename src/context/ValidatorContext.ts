@@ -6,6 +6,7 @@ export interface TerminalAPI {
   lastCommand(): Promise<string>;
   outputContains(text: string): Promise<boolean>;
   run(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }>;
+  runShell(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }>;
 }
 
 export interface ValidatorContext {

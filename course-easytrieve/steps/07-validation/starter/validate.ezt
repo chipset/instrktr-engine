@@ -1,0 +1,47 @@
+* -----------------------------------------------
+* EMPVAL   - Employee file validation program
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+  EMP-ID       1   9  A
+  EMP-NAME    10  30  A
+  EMP-DEPT    40   4  A
+  EMP-SALARY  44   7  N  2
+  EMP-STATUS  51   1  A
+
+  W
+  ERROR-COUNT  N   6     VALUE 0
+  ERR-FIELD    A  12     VALUE SPACES
+  ERR-MSG      A  40     VALUE SPACES
+  RESULT-MSG   A  20     VALUE SPACES
+
+  P
+* TODO 1: Define ERRLIST report with TITLE, HEADING, LINE
+*         Columns: EMP-ID, ERR-FIELD, ERR-MSG
+
+
+* TODO 2: Define SUMMARY report for end-of-run totals
+*         Include ERROR-COUNT and RESULT-MSG
+
+
+* TODO 3: Write checks for each of the six fields:
+*   - EMP-ID EQ SPACES
+*   - EMP-NAME EQ SPACES
+*   - EMP-DEPT EQ SPACES
+*   - NOT EMP-SALARY NUMERIC
+*   - EMP-SALARY LE 0  (only check if numeric)
+*   - EMP-STATUS NE 'A' AND EMP-STATUS NE 'T'
+*
+* For each error: MOVE field-name TO ERR-FIELD
+*                 MOVE 'message'  TO ERR-MSG
+*                 PRINT ERRLIST
+*                 COMPUTE ERROR-COUNT = ERROR-COUNT + 1
+
+
+* TODO 4: Add LABEL EOF block
+*   IF ERROR-COUNT GT 0
+*     MOVE 'VALIDATION FAILED' TO RESULT-MSG
+*   ELSE
+*     MOVE 'VALIDATION PASSED' TO RESULT-MSG
+*   END-IF
+*   PRINT SUMMARY

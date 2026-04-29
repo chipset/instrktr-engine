@@ -1,11 +1,15 @@
 import * as path from 'path';
 import * as fsSync from 'fs';
 import * as vm from 'vm';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { CheckResult, ExecError } from './types';
+import { CheckResult } from './types';
 import { buildContext, TerminalAPI, ValidatorContext } from '../context/ValidatorContext';
+import {
+  AllowAllCommandPermissionService,
+  CommandPermissionService,
+  SecureCommandRunner,
+} from '../security/SecureCommandRunner';
+import { logValidatorCommandDebug } from '../logger';
 
 // Modules a course validator must never be able to load.
 // Critical: 'module' exposes Module._load which bypasses safeRequire entirely.
@@ -25,7 +29,7 @@ const BLOCKED_MODULES = new Set([
   'v8', 'node:v8',
   'vm', 'node:vm',
 ]);
-const execFileAsync = promisify(execFile);
+
 const VALIDATOR_TIMEOUT_MS = 30_000;
 
 interface SandboxModule {
@@ -38,35 +42,40 @@ interface SandboxRuntime {
   courseDir: string;
 }
 
-/** Split a command string into [cmd, ...args] honouring single- and double-quoted tokens. */
-function parseCommand(command: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inSingle = false;
-  let inDouble = false;
-  for (const ch of command.trim()) {
-    if (ch === "'" && !inDouble) { inSingle = !inSingle; }
-    else if (ch === '"' && !inSingle) { inDouble = !inDouble; }
-    else if (ch === ' ' && !inSingle && !inDouble) {
-      if (current) { args.push(current); current = ''; }
-    } else { current += ch; }
-  }
-  if (current) { args.push(current); }
-  return args;
-}
-
 export class ValidatorRunner {
-  constructor(private readonly _workspaceRoot: vscode.Uri) {}
+  private readonly _commandRunner: SecureCommandRunner;
 
-  async run(validatorPath: string, terminal: TerminalAPI, stepIndex?: number): Promise<CheckResult> {
-    if (validatorPath.endsWith('.sh')) {
-      return this._runBash(validatorPath, stepIndex ?? 0);
-    }
-    return this._runJs(validatorPath, terminal);
+  constructor(
+    private readonly _workspaceRoot: vscode.Uri,
+    permissions: CommandPermissionService = new AllowAllCommandPermissionService(),
+  ) {
+    this._commandRunner = new SecureCommandRunner(permissions);
   }
 
-  private async _runBash(validatorPath: string, stepIndex: number): Promise<CheckResult> {
+  async run(
+    validatorPath: string,
+    terminal: TerminalAPI,
+    stepIndex?: number,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<CheckResult> {
+    if (validatorPath.endsWith('.sh')) {
+      return this._runBash(validatorPath, stepIndex ?? 0, courseId, stepId);
+    }
+    logValidatorCommandDebug(
+      `js-validator path=${JSON.stringify(validatorPath)} course=${courseId ?? '<none>'} step=${stepId ?? '<none>'}`,
+    );
+    return this._runJs(validatorPath, terminal, courseId, stepId);
+  }
+
+  private async _runBash(
+    validatorPath: string,
+    stepIndex: number,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<CheckResult> {
     if (process.platform === 'win32') {
+      logValidatorCommandDebug(`bash-validator unsupported platform=win32 path=${JSON.stringify(validatorPath)}`);
       return {
         status: 'fail',
         message: 'Bash validators are not supported on Windows. Use a JS validator (validate.js) instead.',
@@ -80,11 +89,16 @@ export class ValidatorRunner {
     const resolvedScript = path.resolve(validatorPath);
     const resolvedCourseDir = path.resolve(courseDir);
     if (!resolvedScript.startsWith(resolvedCourseDir + path.sep)) {
+      logValidatorCommandDebug(`bash-validator blocked reason=outside-course path=${JSON.stringify(validatorPath)}`);
       return { status: 'fail', message: 'Validator path is outside the course directory.' };
     }
 
     const workspace = this._workspaceRoot.fsPath;
     const shell = process.env['SHELL'] ?? 'bash';
+    const command = `${shell} "${validatorPath}"`;
+    logValidatorCommandDebug(
+      `bash-validator path=${JSON.stringify(validatorPath)} cwd=${JSON.stringify(courseDir)} command=${JSON.stringify(command)} course=${courseId ?? '<none>'} step=${stepId ?? '<none>'}`,
+    );
 
     const timeout = new Promise<CheckResult>((_, reject) =>
       setTimeout(
@@ -93,29 +107,33 @@ export class ValidatorRunner {
       ),
     );
 
-    const run = new Promise<CheckResult>(async (resolve) => {
-      try {
-        const { stdout } = await execFileAsync(shell, [validatorPath], {
-          cwd: courseDir,
-          env: {
-            // Minimal environment: only what validators legitimately need.
-            // Deliberately excludes tokens, secrets, and other process env vars.
-            PATH: process.env['PATH'] ?? '/usr/local/bin:/usr/bin:/bin',
-            HOME: process.env['HOME'] ?? '',
-            LANG: process.env['LANG'] ?? '',
-            INSTRKTR_WORKSPACE: workspace,
-            INSTRKTR_STEP: String(stepIndex),
-          },
-        });
-        resolve({ status: 'pass', message: stdout.trim() || 'Step complete!' });
-      } catch (err: unknown) {
-        const e = err as ExecError;
-        const message = (e.stdout ?? e.stderr ?? String(err)).trim() || 'Check failed.';
-        const exitCode = e.code ?? 1;
-        const status = exitCode === 2 ? 'warn' : 'fail';
-        resolve({ status, message });
+    const run = (async (): Promise<CheckResult> => {
+      const result = await this._commandRunner.run({
+        command,
+        cwd: courseDir,
+        source: 'bashValidator',
+        courseId,
+        stepId,
+        validatorPath,
+        env: {
+          // Minimal environment: only what validators legitimately need.
+          // Deliberately excludes tokens, secrets, and other process env vars.
+          PATH: process.env['PATH'] ?? '/usr/local/bin:/usr/bin:/bin',
+          HOME: process.env['HOME'] ?? '',
+          LANG: process.env['LANG'] ?? '',
+          INSTRKTR_WORKSPACE: workspace,
+          INSTRKTR_STEP: String(stepIndex),
+        },
+      });
+      if (result.exitCode === 0) {
+        const stdout = result.stdout;
+        return { status: 'pass', message: stdout.trim() || 'Step complete!' };
       }
-    });
+
+      const message = (result.stdout || result.stderr).trim() || 'Check failed.';
+      const status = result.exitCode === 2 ? 'warn' : 'fail';
+      return { status, message };
+    })();
 
     try {
       return await Promise.race([run, timeout]);
@@ -124,7 +142,12 @@ export class ValidatorRunner {
     }
   }
 
-  private async _runJs(validatorPath: string, terminal: TerminalAPI): Promise<CheckResult> {
+  private async _runJs(
+    validatorPath: string,
+    terminal: TerminalAPI,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<CheckResult> {
     let fn: (ctx: ReturnType<typeof buildContext>) => Promise<CheckResult>;
     let runtime: SandboxRuntime;
     try {
@@ -147,7 +170,28 @@ export class ValidatorRunner {
     );
 
     try {
-      const ctx = buildContext(this._workspaceRoot, terminal);
+      const cwd = this._workspaceRoot.fsPath;
+      const scopedTerminal: TerminalAPI = {
+        lastCommand: () => terminal.lastCommand(),
+        outputContains: (text: string) => terminal.outputContains(text),
+        run: (command: string) => this._commandRunner.run({
+          command,
+          cwd,
+          source: 'terminal.run',
+          courseId,
+          stepId,
+          validatorPath,
+        }),
+        runShell: (command: string) => this._commandRunner.runShell({
+          command,
+          cwd,
+          source: 'terminal.runShell',
+          courseId,
+          stepId,
+          validatorPath,
+        }),
+      };
+      const ctx = buildContext(this._workspaceRoot, scopedTerminal);
       return await Promise.race([this._invokeSandboxValidator(fn, ctx, runtime), timeout]);
     } catch (err) {
       return { status: 'fail', message: String(err) };
@@ -289,6 +333,8 @@ export class ValidatorRunner {
           return hostContext.terminal.outputContains(this._expectStringArg(args, 0, op));
         case 'terminal.run':
           return hostContext.terminal.run(this._expectStringArg(args, 0, op));
+        case 'terminal.runShell':
+          return hostContext.terminal.runShell(this._expectStringArg(args, 0, op));
         case 'env.get':
           return hostContext.env.get(this._expectStringArg(args, 0, op));
         case 'workspace.getConfig':
@@ -312,6 +358,7 @@ export class ValidatorRunner {
             lastCommand: bridgeAsync('terminal.lastCommand'),
             outputContains: bridgeAsync('terminal.outputContains'),
             run: bridgeAsync('terminal.run'),
+            runShell: bridgeAsync('terminal.runShell'),
           },
           env: {
             get: (name) => __bridge('env.get', [name]),
@@ -351,24 +398,28 @@ export class ValidatorRunner {
     return value as RegExp;
   }
 
-  static buildTerminalAPI(workspaceRoot: vscode.Uri): TerminalAPI {
+  static buildTerminalAPI(
+    workspaceRoot: vscode.Uri,
+    permissions: CommandPermissionService = new AllowAllCommandPermissionService(),
+  ): TerminalAPI {
     const cwd = workspaceRoot.fsPath;
+    const commandRunner = new SecureCommandRunner(permissions);
     return {
       async lastCommand() { return ''; },
       async outputContains() { return false; },
       async run(command) {
-        try {
-          const [cmd, ...args] = parseCommand(command);
-          const { stdout, stderr } = await execFileAsync(cmd, args, { cwd });
-          return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode: 0 };
-        } catch (err: unknown) {
-          const e = err as ExecError;
-          return {
-            stdout: (e.stdout ?? '').trim(),
-            stderr: (e.stderr ?? '').trim(),
-            exitCode: e.code ?? 1,
-          };
-        }
+        return commandRunner.run({
+          command,
+          cwd,
+          source: 'terminal.run',
+        });
+      },
+      async runShell(command) {
+        return commandRunner.runShell({
+          command,
+          cwd,
+          source: 'terminal.runShell',
+        });
       },
     };
   }

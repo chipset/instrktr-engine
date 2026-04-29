@@ -9,6 +9,10 @@ import { ValidatorRunner } from './ValidatorRunner';
 import { CourseLoader } from './CourseLoader';
 import { ProgressStore } from './ProgressStore';
 import { CourseWorkspaceManager } from './CourseWorkspaceManager';
+import {
+  AllowAllCommandPermissionService,
+  CommandPermissionService,
+} from '../security/SecureCommandRunner';
 
 export class StepRunner {
   private _course?: CourseDef;
@@ -17,6 +21,7 @@ export class StepRunner {
   private _stepIndex = 0;
   private _completedSteps: number[] = [];
   private _navigating = false;
+  private _loadGeneration = 0;
   private _scaffolder: FileScaffolder;
   private _fileWatcher = new FileWatcher();
   private _courseWatcher?: vscode.FileSystemWatcher;
@@ -33,15 +38,25 @@ export class StepRunner {
     initialWorkspaceRoot: vscode.Uri,
     private readonly _progress: ProgressStore,
     private readonly _workspaces: CourseWorkspaceManager,
+    private readonly _permissions: CommandPermissionService = new AllowAllCommandPermissionService(),
   ) {
     this._workspaceRoot = initialWorkspaceRoot;
     this._scaffolder = new FileScaffolder(initialWorkspaceRoot);
-    this._terminal = ValidatorRunner.buildTerminalAPI(initialWorkspaceRoot);
-    this._validatorRunner = new ValidatorRunner(initialWorkspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(initialWorkspaceRoot, _permissions);
+    this._validatorRunner = new ValidatorRunner(initialWorkspaceRoot, _permissions);
   }
 
   setTerminalAPI(api: TerminalAPI) {
     this._terminal = api;
+  }
+
+  setWorkspaceRoot(workspaceRoot: vscode.Uri) {
+    if (this._workspaceRoot.fsPath === workspaceRoot.fsPath) { return; }
+    this._workspaceRoot = workspaceRoot;
+    this._scaffolder = new FileScaffolder(workspaceRoot);
+    this._terminal = ValidatorRunner.buildTerminalAPI(workspaceRoot, this._permissions);
+    this._validatorRunner = new ValidatorRunner(workspaceRoot, this._permissions);
+    this._fileWatcher.watch(workspaceRoot);
   }
 
   fireLoadError(message: string) {
@@ -56,16 +71,29 @@ export class StepRunner {
   }
 
   async loadCourse(courseDir: string, devMode = false): Promise<void> {
-    this._course = await this._loader.load(courseDir);
+    const loadGeneration = ++this._loadGeneration;
+    this._courseWatcher?.dispose();
+    this._courseWatcher = undefined;
+    this._onStateChange.fire({
+      loaded: false,
+      courseTitle: '',
+      stepIndex: 0,
+      totalSteps: 0,
+      completedSteps: [],
+    });
+
+    const course = await this._loader.load(courseDir);
+    if (loadGeneration !== this._loadGeneration) { return; }
+
+    this._course = course;
     this._courseDir = courseDir;
     this._workspaceRoot = await this._workspaces.prepare(courseDir);
     this._scaffolder = new FileScaffolder(this._workspaceRoot);
-    this._validatorRunner = new ValidatorRunner(this._workspaceRoot);
-    this._terminal = ValidatorRunner.buildTerminalAPI(this._workspaceRoot);
+    this._validatorRunner = new ValidatorRunner(this._workspaceRoot, this._permissions);
+    this._terminal = ValidatorRunner.buildTerminalAPI(this._workspaceRoot, this._permissions);
     this._fileWatcher.watch(this._workspaceRoot);
 
     // Dev mode: watch the course folder itself and re-render on any change
-    this._courseWatcher?.dispose();
     if (devMode) {
       const pattern = new vscode.RelativePattern(vscode.Uri.file(courseDir), '**/*');
       this._courseWatcher = vscode.workspace.createFileSystemWatcher(pattern);
@@ -74,9 +102,11 @@ export class StepRunner {
         if (debounce) { clearTimeout(debounce); }
         debounce = setTimeout(async () => {
           try {
-            this._course = await this._loader.load(courseDir);
+            const reloadedCourse = await this._loader.load(courseDir);
+            if (loadGeneration !== this._loadGeneration) { return; }
+            this._course = reloadedCourse;
           } catch { /* keep existing course if manifest is temporarily invalid */ }
-          await this._enterStep();
+          await this._enterStep(loadGeneration);
         }, 500);
       };
       this._courseWatcher.onDidChange(reload);
@@ -86,8 +116,16 @@ export class StepRunner {
 
     // Resume saved progress or start fresh (with migration if version changed)
     const { progress: saved, migrated } = await this._progress.start(this._course);
-    this._stepIndex = saved.currentStep;
-    this._completedSteps = [...saved.completedSteps];
+    if (loadGeneration !== this._loadGeneration) { return; }
+
+    const lastStepIndex = this._course.steps.length - 1;
+    this._stepIndex = Math.min(Math.max(saved.currentStep, 0), lastStepIndex);
+    this._completedSteps = [...new Set(saved.completedSteps)]
+      .filter((stepIndex) => stepIndex >= 0 && stepIndex <= lastStepIndex);
+    if (this._stepIndex !== saved.currentStep) {
+      await this._progress.setCurrentStep(this._course.id, this._stepIndex);
+      if (loadGeneration !== this._loadGeneration) { return; }
+    }
 
     if (migrated) {
       vscode.window.showInformationMessage(
@@ -95,7 +133,7 @@ export class StepRunner {
       );
     }
 
-    await this._enterStep();
+    await this._enterStep(loadGeneration);
   }
 
   async check(): Promise<CheckResult> {
@@ -107,7 +145,13 @@ export class StepRunner {
       return { status: 'pass', message: 'Step complete!' };
     }
     const validatorPath = this._safeCourseJoin(this._courseDir, step.validator);
-    const result = await this._validatorRunner.run(validatorPath, this._terminal, this._stepIndex);
+    const result = await this._validatorRunner.run(
+      validatorPath,
+      this._terminal,
+      this._stepIndex,
+      this._course.id,
+      step.id,
+    );
 
     if (result.status === 'pass') {
       await this._progress.markStepComplete(this._course.id, this._stepIndex);
@@ -146,7 +190,7 @@ export class StepRunner {
   }
 
   async previousStep(): Promise<boolean> {
-    if (this._stepIndex === 0 || this._navigating) { return false; }
+    if (!this._course || this._stepIndex === 0 || this._navigating) { return false; }
     this._navigating = true;
     try {
       this._stepIndex--;
@@ -212,7 +256,7 @@ export class StepRunner {
     return this._course?.steps[this._stepIndex];
   }
 
-  private async _enterStep() {
+  private async _enterStep(loadGeneration = this._loadGeneration) {
     const step = this._currentStep();
     if (!step || !this._courseDir) { return; }
 
@@ -241,6 +285,8 @@ export class StepRunner {
         hasSolution = true;
       } catch { /* solution dir is optional or path traversal attempt */ }
     }
+
+    if (loadGeneration !== this._loadGeneration) { return; }
 
     this._onStateChange.fire({
       loaded: true,

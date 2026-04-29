@@ -1,0 +1,14 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report: file definitions
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+  EMP-ID       1   9  A          Employee ID
+  EMP-NAME    10  30  A          Employee name
+  EMP-DEPT    40   4  A          Department code
+  EMP-SALARY  44   7  N  2       Salary (7 digits, 2 decimal places)
+  EMP-STATUS  51   1  A          Status: A=active, T=terminated
+
+  W
+
+  P

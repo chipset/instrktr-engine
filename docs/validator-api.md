@@ -8,6 +8,13 @@ Validators can be written in **JavaScript** (`validate.js`) or **Bash** (`valida
 
 Bash validators run as a child process from the **course directory** — not the workspace. This means learners cannot edit or tamper with the script regardless of what access they have to their workspace.
 
+Copyable Bash examples are available in `example-validators/`:
+
+- `bash-file-existence.sh`
+- `bash-file-content.sh`
+- `bash-terminal-command.sh`
+- `bash-json-with-node.sh`
+
 ### Contract
 
 | | Detail |
@@ -318,6 +325,8 @@ const passed = await context.terminal.outputContains('initialized empty');
 #### `terminal.run(command)`
 Runs a command in the workspace and returns its output. Use this for authoritative checks (`git log`, `npm test`, CLI tools). Do not use for long-running processes. Times out after 30 seconds.
 
+`terminal.run` executes the command directly, not through a shell. Shell syntax such as `~`, `&&`, pipes, redirects, and environment variable expansion is not interpreted.
+
 ```js
 const { stdout, stderr, exitCode } = await context.terminal.run('git log --oneline -1');
 if (exitCode !== 0) {
@@ -326,6 +335,24 @@ if (exitCode !== 0) {
 ```
 
 `stderr` contains any error output. Both `stdout` and `stderr` are trimmed strings.
+
+#### `terminal.runShell(command)`
+Runs a command through the user's shell in the workspace and returns its output. Use this only when the check intentionally needs shell features such as `~`, `&&`, pipes, redirects, or variable expansion.
+
+```js
+const { stdout, exitCode } = await context.terminal.runShell(
+  'test -f ~/.zowe/zowe.config.json && echo "exists"',
+);
+if (exitCode !== 0 || !stdout.includes('exists')) {
+  return context.fail('Global Zowe config was not found.');
+}
+```
+
+See `example-validators/shell-command.js` for a copyable JavaScript example that uses `runShell`.
+
+Before a validator command runs, Instrktr asks the learner for permission. The prompt explains what the command is checking, shows the exact command and working directory, and offers **Allow Once**, **Always Allow**, or **Deny**. Always-allow decisions are scoped to the exact normalized command, course, step, source, and workspace directory.
+
+Workspace file checks such as `context.files.exists('package.json')` do not prompt because they are already constrained to the workspace root and cannot inspect paths outside it.
 
 ---
 

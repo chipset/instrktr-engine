@@ -1,0 +1,23 @@
+* -----------------------------------------------
+* EMPRPT  - Employee report: working storage
+* -----------------------------------------------
+
+  FILE EMPLOYEE EMPDD
+  EMP-ID       1   9  A
+  EMP-NAME    10  30  A
+  EMP-DEPT    40   4  A
+  EMP-SALARY  44   7  N  2
+  EMP-STATUS  51   1  A
+
+  W
+* TODO: Add the following working storage fields:
+*
+*   TOTAL-SAL  - numeric, 11 digits, 2 decimal places, initial value 0
+*   EMP-COUNT  - numeric, 6 digits, initial value 0
+*   DEPT-SAVE  - alphanumeric, 4 bytes, initial value SPACES
+*   ERROR-FLAG - alphanumeric, 1 byte, initial value 'N'
+*
+*   Format: field-name  type  length  [decimals]  [VALUE literal]
+
+
+  P

@@ -18,6 +18,14 @@ export function logError(message: string, err?: unknown): void {
   log(`ERROR ${message}${suffix}`);
 }
 
+export function logValidatorCommandDebug(message: string): void {
+  const enabled = vscode.workspace
+    .getConfiguration('instrktr')
+    .get<boolean>('debugValidatorCommands', false);
+  if (!enabled) { return; }
+  log(`DEBUG validator-command ${message}`);
+}
+
 export function disposeLogger(): void {
   _channel?.dispose();
   _channel = undefined;

@@ -26,7 +26,8 @@ When you advance through steps, the course can:
 
 - **Run scripts.** Validators (\`validate.js\` or \`validate.sh\`) execute as your user.
 - **Read and write files** in your VS Code workspace folder.
-- **Run shell commands** through \`context.terminal.run\`.
+- **Run commands** through \`context.terminal.run\` and shell commands through
+  \`context.terminal.runShell\`.
 - **Read certain environment variables** (Instrktr blocks names that look like
   credentials, but the filter is best-effort).
 

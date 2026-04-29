@@ -20,7 +20,7 @@ export class CatalogProvider implements vscode.WebviewViewProvider {
     private readonly _registry: RegistryFetcher,
     private readonly _installed: InstalledCourses,
     private readonly _onInstall: (course: RegistryCourse) => Promise<void>,
-    private readonly _onStart: (courseId: string) => void,
+    private readonly _onStart: (courseId: string) => Promise<void>,
     private readonly _onUninstall: (courseId: string) => Promise<void>,
   ) {}
 
@@ -45,7 +45,7 @@ export class CatalogProvider implements vscode.WebviewViewProvider {
           break;
         }
         case 'start':
-          this._onStart(msg.courseId);
+          await this._onStart(msg.courseId);
           break;
         case 'uninstall':
           await this._onUninstall(msg.courseId);
