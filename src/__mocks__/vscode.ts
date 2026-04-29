@@ -12,6 +12,10 @@ export class Uri {
 
   static file(p: string): Uri { return new Uri(p); }
 
+  static parse(value: string): Uri { return new Uri(value); }
+
+  toString(): string { return this.fsPath; }
+
   static joinPath(base: Uri, ...parts: string[]): Uri {
     return new Uri(path.join(base.fsPath, ...parts));
   }

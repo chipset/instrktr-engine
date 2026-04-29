@@ -79,6 +79,98 @@ The path is relative to the workspace root. These render as styled file chips in
 
 Normal `https://` links open in the system browser as usual.
 
+### Fenced code blocks
+
+Standard Markdown **fenced** blocks (triple backticks) render with a **Copy** button in the Active Course panel. Learners click **Copy** and paste into the editor, a new file, or an external terminal. You do not add any special syntax for the button — only normal Markdown fences in `instructions.md`.
+
+**What gets a Copy button:** fenced blocks only. Inline `` `code` `` in a sentence does not.
+
+### Syntax highlighting
+
+Instrktr highlights **fenced** code in the Active Course panel using [highlight.js](https://highlightjs.org/). Highlighting is automatic whenever you put a **language identifier** on the **opening** fence line, right after the opening backticks.
+
+**Format (required for highlighting):**
+
+````markdown
+```bash
+echo "hello"
+```
+````
+
+Rules:
+
+1. **Opening fence only** — put the language tag on the first line (` ```bash `). The closing fence is plain ` ``` ` (no tag).
+2. **One word for the language** — use the usual short name: `bash`, `sh`, `yaml`, `json`, `javascript` / `js`, `typescript` / `ts`, `python`, `java`, `sql`, `xml`, `html`, `css`, `dockerfile`, `diff`, `plaintext`, `text`, etc. Extra words on the same line (e.g. editor metadata) are ignored; only the first token is used.
+3. **Case** — prefer lowercase tags (`yaml` not `YAML`); common names are recognized as highlight.js defines them.
+4. **Unknown or missing language** — if the tag is empty or not a known grammar, Instrktr still shows the block and **Copy**, and picks highlighting with **auto-detection** (best-effort).
+5. **Not highlighted** — single-backtick **inline** code, and indented code blocks (if you use them), are not passed through the highlighter the same way; prefer triple-backtick fences for anything you want colored.
+
+The panel theme uses VS Code–aware colors (`highlight-instrktr.css`) so highlighting stays readable in light and dark themes.
+
+#### Example: command learners should run
+
+Write this in `instructions.md`:
+
+````markdown
+From the project root, run:
+
+```bash
+npm install && npm test
+```
+
+If `npm` is not on your PATH, use the full path your instructor shared.
+````
+
+Learners see the shell block with **Copy** and can paste the exact command.
+
+#### Example: multi-line config or manifest
+
+````markdown
+Add a `docker-compose.yml` with this service definition:
+
+```yaml
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: npm run dev
+```
+````
+
+Optional **language tags** control **syntax highlighting** in the panel and help readers in the source; the **Copy** button always copies the plain text of the block (no HTML markup).
+
+#### Example: longer snippet (workshop / mainframe-adjacent flows)
+
+````markdown
+Paste this JCL-style job card into your editor and adjust the job name:
+
+```text
+//MYJOB   JOB (ACCT),'TRAINING',CLASS=A,MSGCLASS=X
+//STEP1   EXEC PGM=IEFBR14
+//SYSPRINT DD SYSOUT=*
+```
+
+Then save as `hello.jcl` in the workspace root.
+````
+
+Use a language tag that matches what learners expect (`text`, `jcl`, `sh`, etc.). Unknown tags still get a **Copy** button and **auto-detected** highlighting when possible.
+
+### Images in instructions
+
+Place image files **inside the course repository** (for example next to the step under `steps/01-intro/assets/`) and reference them with a path **relative to the course root** (the folder that contains `course.json`):
+
+```markdown
+![Architecture overview](steps/01-intro/assets/overview.png)
+```
+
+- **`https:` / `http:`** image URLs are allowed unchanged (useful for hosted diagrams).
+- **`data:`** URIs are passed through as-is.
+- Paths that try to leave the course pack with `..` segments are **not** rewritten and stay broken by design.
+
+Keep assets small; prefer PNG or SVG for clarity in the narrow sidebar.
+
 ---
 
 ## Starter Files
@@ -199,7 +291,7 @@ If you rename, reorder, or remove steps, add a `migration` table so existing pro
 ```json
 {
   "migration": {
-    "1.0.0": {
+    "1.0.0": { 
       "old-step-id": "new-step-id"
     }
   }

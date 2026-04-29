@@ -27,13 +27,15 @@ describe('Zowe Gulp Mocha course formatting', () => {
     expect(unlabeledOpenings).toEqual([]);
   });
 
-  it('ships lightweight syntax highlighting for rendered course code blocks', () => {
-    const mainJs = fs.readFileSync(path.join(root, 'src/webview/ui/main.js'), 'utf8');
-    const styles = fs.readFileSync(path.join(root, 'src/webview/ui/styles.css'), 'utf8');
+  it('ships syntax highlighting for rendered course code blocks', () => {
+    const renderer = fs.readFileSync(path.join(root, 'src/engine/renderInstructions.ts'), 'utf8');
+    const panel = fs.readFileSync(path.join(root, 'src/webview/PanelProvider.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'src/webview/ui/highlight-instrktr.css'), 'utf8');
 
-    expect(mainJs).toContain('function highlightCodeBlocks');
-    expect(mainJs).toContain('highlightCodeBlocks(instructions)');
-    expect(styles).toContain('.tok-keyword');
-    expect(styles).toContain('.tok-string');
+    expect(renderer).toContain("import hljs from 'highlight.js'");
+    expect(renderer).toContain('hljs.highlight');
+    expect(panel).toContain('highlight-instrktr.css');
+    expect(styles).toContain('.hljs-keyword');
+    expect(styles).toContain('.hljs-string');
   });
 });

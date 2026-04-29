@@ -165,6 +165,7 @@ body {
 .instructions pre {
   background: var(--vscode-textCodeBlock-background);
   padding: 10px 12px;
+  padding-top: 32px;
   border-radius: 4px;
   overflow-x: auto;
   margin-bottom: 10px;
@@ -175,25 +176,51 @@ body {
   padding: 0;
 }
 
-.instructions pre code .tok-keyword {
-  color: var(--vscode-symbolIcon-keywordForeground, #c586c0);
+.instructions img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0 0 10px;
+  vertical-align: middle;
 }
 
-.instructions pre code .tok-string {
-  color: var(--vscode-symbolIcon-stringForeground, #ce9178);
+/* Fenced code blocks: copy control (added by main.js after markdown render) */
+.instrktr-code-block {
+  position: relative;
+  margin-bottom: 10px;
 }
 
-.instructions pre code .tok-comment {
-  color: var(--vscode-descriptionForeground);
-  font-style: italic;
+.instrktr-code-block pre {
+  margin-bottom: 0;
 }
 
-.instructions pre code .tok-number {
-  color: var(--vscode-symbolIcon-numberForeground, #b5cea8);
+.instrktr-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  font-family: var(--vscode-font-family);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.35)));
+  background: var(--vscode-editor-background, var(--vscode-sideBar-background));
+  color: var(--vscode-foreground);
+  opacity: 0.85;
 }
 
-.instructions pre code .tok-attr {
-  color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe);
+.instrktr-copy-btn:hover {
+  opacity: 1;
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.instrktr-copy-btn:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+  opacity: 1;
 }
 
 /* open: file links render as clickable file chips */

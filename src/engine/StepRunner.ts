@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { marked } from 'marked';
+import { renderInstructionsMarkdown } from './renderInstructions';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { CourseDef, StepDef, StepState, CheckResult } from './types';
@@ -237,6 +237,11 @@ export class StepRunner {
   get fileWatcher(): FileWatcher { return this._fileWatcher; }
   get workspaceRoot(): vscode.Uri { return this._workspaceRoot; }
 
+  /** Absolute filesystem path to the loaded course directory, if a course is active. */
+  getCourseDirectory(): string | undefined {
+    return this._courseDir;
+  }
+
   currentStepSolutionDir(): string | undefined {
     const step = this._currentStep();
     if (!step?.solution || !this._courseDir) { return undefined; }
@@ -284,7 +289,7 @@ export class StepRunner {
     } catch {
       // file not found or path traversal — fall back to literal value
     }
-    const instructionsHtml = await marked(md);
+    const instructionsHtml = await renderInstructionsMarkdown(md);
 
     let hasSolution = false;
     if (step.solution) {

@@ -1,0 +1,85 @@
+/**
+ * highlight.js token colors mapped to VS Code webview theme variables.
+ * Pairs with server-rendered <code class="hljs language-…"> from renderInstructions.ts.
+ */
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  color: var(--vscode-editor-foreground);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: var(--vscode-symbolIcon-keywordForeground, #569cd6);
+}
+
+.hljs-string,
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--vscode-debugTokenExpressionString, #ce9178);
+}
+
+.hljs-number,
+.hljs-bullet {
+  color: var(--vscode-debugTokenExpressionNumber, #b5cea8);
+}
+
+.hljs-title,
+.hljs-function .hljs-keyword,
+.hljs-class .hljs-title {
+  color: var(--vscode-symbolIcon-methodForeground, #dcdcaa);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--vscode-symbolIcon-variableForeground, #9cdcfe);
+}
+
+.hljs-built_in,
+.hljs-name,
+.hljs-type {
+  color: var(--vscode-terminal-ansiCyan, #4ec9b0);
+}
+
+.hljs-meta,
+.hljs-doctag,
+.hljs-strong,
+.hljs-emphasis {
+  color: var(--vscode-descriptionForeground);
+}
+
+.hljs-deletion,
+.hljs-symbol,
+.hljs-formula {
+  color: var(--vscode-editor-foreground);
+}
+
+.hljs-subst {
+  color: var(--vscode-editor-foreground);
+}
+
+.hljs-tag {
+  color: var(--vscode-symbolIcon-colorForeground, #569cd6);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
