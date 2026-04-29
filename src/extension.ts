@@ -257,6 +257,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const panelProvider = new PanelProvider(context.extensionUri, runner, auth);
 
+  function isPresentationMode(): boolean {
+    return vscode.workspace
+      .getConfiguration('instrktr')
+      .get<boolean>('presentationMode', false);
+  }
+
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(CatalogProvider.viewId, catalogProvider),
     vscode.window.registerWebviewViewProvider(PanelProvider.viewId, panelProvider),
@@ -364,6 +370,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand('instrktr.checkWork', async () => {
       try {
+        if (isPresentationMode()) {
+          await runner.nextStep();
+          return;
+        }
         const result = await runner.check();
         // The panel handles its own checkResult display via postMessage in PanelProvider.
         // This command path posts directly so keyboard shortcut invocations show the result.

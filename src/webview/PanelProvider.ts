@@ -61,6 +61,10 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 
         case 'checkWork': {
           try {
+            if (this._presentationMode) {
+              await this._runner.nextStep();
+              break;
+            }
             const result = await this._runner.check();
             webviewView.webview.postMessage({ command: 'checkResult', result });
           } catch (err) {

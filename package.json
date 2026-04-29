@@ -156,7 +156,7 @@
           "type": "boolean",
           "default": false,
           "scope": "resource",
-          "markdownDescription": "Optimize the Instrktr panel for live presentations: hides sign-in/sync controls and spoiler-oriented learner aids such as hints and solution comparison."
+          "markdownDescription": "Optimize the Instrktr panel for live presentations: hides sign-in/sync controls, spoiler-oriented learner aids such as hints and solution comparison, and skips validator checks."
         },
         "instrktr.debugValidatorCommands": {
           "type": "boolean",

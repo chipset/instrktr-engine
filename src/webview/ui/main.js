@@ -115,6 +115,14 @@ function applyState(state) {
   resultEl.className = 'result';
   compareBtn.hidden = true;
 
+  if (presentationMode) {
+    checkBtn.hidden = false;
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Next';
+    nextBtn.hidden = true;
+    return;
+  }
+
   if (!state.hasValidator) {
     // No validator — skip the check ceremony, go straight to Next Step
     checkBtn.hidden = true;
@@ -166,6 +174,11 @@ stepDots.addEventListener('click', (e) => {
 });
 
 checkBtn.addEventListener('click', () => {
+  if (presentationMode) {
+    vscode.postMessage({ command: 'nextStep' });
+    return;
+  }
+
   checkBtn.disabled = true;
   checkBtn.textContent = 'Checking…';
   vscode.postMessage({ command: 'checkWork' });
@@ -242,8 +255,8 @@ window.addEventListener('message', (event) => {
     case 'checkResult':
       if (checkTimeout) { clearTimeout(checkTimeout); checkTimeout = null; }
       checkBtn.disabled = false;
-      checkBtn.textContent = 'Check My Work';
-      showResult(msg.result);
+      checkBtn.textContent = presentationMode ? 'Next' : 'Check My Work';
+      if (!presentationMode) { showResult(msg.result); }
       break;
   }
 });

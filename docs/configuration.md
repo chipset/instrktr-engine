@@ -59,13 +59,14 @@ Boolean. Default: `false`. When enabled, Instrktr optimizes the course panel for
 - hides GitHub sign-in/sync controls
 - hides learner hint controls
 - hides and blocks solution comparison from the panel
+- treats validator steps as presentation navigation: the primary **Check My Work** button becomes **Next** and advances without running validators
 - slightly increases panel spacing and type scale for projector readability
 
 ```jsonc
 "instrktr.presentationMode": true
 ```
 
-Use this when driving a workshop from a projected VS Code window and you want to avoid accidental spoilers while keeping navigation and **Check My Work** available.
+Use this when driving a workshop from a projected VS Code window and you want to avoid accidental spoilers and validator interruptions while keeping step navigation available.
 
 ### `instrktr.debugValidatorCommands`
 

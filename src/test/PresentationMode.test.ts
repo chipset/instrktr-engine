@@ -27,7 +27,19 @@ describe('presentation mode contribution', () => {
     const styles = fs.readFileSync(path.join(root, 'src/webview/ui/styles.css'), 'utf8');
 
     expect(mainJs).toContain("case 'setPresentationMode'");
+    expect(mainJs).toContain("checkBtn.textContent = 'Next'");
+    expect(mainJs).toContain("vscode.postMessage({ command: 'nextStep' })");
     expect(mainJs).toContain('presentationMode || !hasSolution');
     expect(styles).toContain('body.presentation-mode .auth-bar');
+  });
+
+  it('bypasses validator execution in presentation mode command paths', () => {
+    const panelProvider = fs.readFileSync(path.join(root, 'src/webview/PanelProvider.ts'), 'utf8');
+    const extension = fs.readFileSync(path.join(root, 'src/extension.ts'), 'utf8');
+
+    expect(panelProvider).toContain('if (this._presentationMode)');
+    expect(panelProvider).toContain('await this._runner.nextStep();');
+    expect(extension).toContain('if (isPresentationMode())');
+    expect(extension).toContain('await runner.nextStep();');
   });
 });
