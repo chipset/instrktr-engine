@@ -1,0 +1,19 @@
+{
+  "name": "instrktr-dashboard",
+  "version": "0.1.0",
+  "description": "Live instructor dashboard for Instrktr — displays learner progress via webhooks",
+  "bin": "server.js",
+  "files": [
+    "server.js"
+  ],
+  "keywords": [
+    "instrktr",
+    "dashboard",
+    "instructor",
+    "education"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

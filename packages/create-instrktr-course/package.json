@@ -1,0 +1,22 @@
+{
+  "name": "create-instrktr-course",
+  "version": "0.1.0",
+  "description": "Scaffold a new Instrktr course",
+  "bin": "index.js",
+  "files": [
+    "index.js",
+    "templates/"
+  ],
+  "keywords": [
+    "instrktr",
+    "course",
+    "scaffold",
+    "create",
+    "education",
+    "vscode"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
