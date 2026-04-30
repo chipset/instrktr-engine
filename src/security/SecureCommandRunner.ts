@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import { ExecError } from '../engine/types';
 import { logValidatorCommandDebug } from '../logger';
 
-export type CommandSource = 'terminal.run' | 'terminal.runShell' | 'bashValidator';
+export type CommandSource = 'terminal.run' | 'terminal.runShell' | 'bashValidator' | 'bashSetup';
 
 export interface CommandPermissionRequest {
   command: string;

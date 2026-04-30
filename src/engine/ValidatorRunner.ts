@@ -219,7 +219,7 @@ export class ValidatorRunner {
       const mod = this._loadSandboxModule(path.resolve(setupPath), runtime);
       fn = mod.exports as typeof fn;
     } catch (err) {
-      throw new Error(`Could not load setup script: ${err}`);
+      throw new Error(`Could not load setup script: ${err}`, { cause: err });
     }
 
     const timeout = new Promise<never>((_, reject) =>
