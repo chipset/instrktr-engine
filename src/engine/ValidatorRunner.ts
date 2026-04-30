@@ -435,6 +435,8 @@ export class ValidatorRunner {
           return hostContext.env.get(this._expectStringArg(args, 0, op));
         case 'workspace.getConfig':
           return hostContext.workspace.getConfig(this._expectStringArg(args, 0, op));
+        case 'commands.execute':
+          return hostContext.commands.execute(this._expectStringArg(args, 0, op), ...args.slice(1));
         default:
           throw new Error(`Unknown bridge operation: ${op}`);
       }
@@ -469,6 +471,9 @@ export class ValidatorRunner {
           },
           workspace: {
             getConfig: bridgeAsync('workspace.getConfig'),
+          },
+          commands: {
+            execute: bridgeAsync('commands.execute'),
           },
         };
         await __setup(ctx);
@@ -511,6 +516,9 @@ export class ValidatorRunner {
           },
           workspace: {
             getConfig: bridgeAsync('workspace.getConfig'),
+          },
+          commands: {
+            execute: bridgeAsync('commands.execute'),
           },
           pass: (message) => ({ status: 'pass', message }),
           fail: (message) => ({ status: 'fail', message }),

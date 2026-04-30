@@ -1,8 +1,8 @@
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { Uri } from '../__mocks__/vscode';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { commands, Uri } from '../__mocks__/vscode';
 import { ValidatorRunner } from '../engine/ValidatorRunner';
 
 const terminalStub = {
@@ -29,6 +29,8 @@ async function makeValidator(files: Record<string, string>) {
 
 describe('ValidatorRunner JS sandbox', () => {
   const cleanup: string[] = [];
+
+  beforeEach(() => { vi.clearAllMocks(); });
 
   afterEach(async () => {
     await Promise.all(cleanup.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
@@ -109,5 +111,54 @@ describe('ValidatorRunner JS sandbox', () => {
       status: 'pass',
       message: 'undefined',
     });
+  });
+
+  it('ctx.commands.execute calls vscode.commands.executeCommand with the command id', async () => {
+    const { root, validatorPath } = await makeValidator({
+      'validate.js': `
+        module.exports = async function validate(ctx) {
+          await ctx.commands.execute('m3270.pf3');
+          return ctx.pass('done');
+        };
+      `,
+    });
+    cleanup.push(root);
+
+    const runner = new ValidatorRunner(Uri.file('/workspace') as never);
+    await runner.run(validatorPath, terminalStub, 0);
+    expect(commands.executeCommand).toHaveBeenCalledWith('m3270.pf3');
+  });
+
+  it('ctx.commands.execute returns the resolved value from executeCommand', async () => {
+    const { root, validatorPath } = await makeValidator({
+      'validate.js': `
+        module.exports = async function validate(ctx) {
+          const result = await ctx.commands.execute('m3270.getSnapshot');
+          return ctx.pass(typeof result);
+        };
+      `,
+    });
+    cleanup.push(root);
+
+    commands.executeCommand.mockResolvedValueOnce({ screen: {} });
+    const runner = new ValidatorRunner(Uri.file('/workspace') as never);
+    const result = await runner.run(validatorPath, terminalStub, 0);
+    expect(result).toEqual({ status: 'pass', message: 'object' });
+  });
+
+  it('ctx.commands.execute passes additional arguments through to executeCommand', async () => {
+    const { root, validatorPath } = await makeValidator({
+      'validate.js': `
+        module.exports = async function validate(ctx) {
+          await ctx.commands.execute('test.cmd', 'hello', 42);
+          return ctx.pass('done');
+        };
+      `,
+    });
+    cleanup.push(root);
+
+    const runner = new ValidatorRunner(Uri.file('/workspace') as never);
+    await runner.run(validatorPath, terminalStub, 0);
+    expect(commands.executeCommand).toHaveBeenCalledWith('test.cmd', 'hello', 42);
   });
 });

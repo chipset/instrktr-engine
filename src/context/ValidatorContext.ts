@@ -23,6 +23,9 @@ export interface ValidatorContext {
   workspace: {
     getConfig(key: string): Promise<string>;
   };
+  commands: {
+    execute(commandId: string, ...args: unknown[]): Promise<unknown>;
+  };
   pass(message: string): CheckResult;
   fail(message: string): CheckResult;
   warn(message: string): CheckResult;
@@ -98,6 +101,11 @@ export function buildContext(
     workspace: {
       async getConfig(key) {
         return vscode.workspace.getConfiguration('instrktr').get<string>(key) ?? '';
+      },
+    },
+    commands: {
+      async execute(commandId, ...args) {
+        return vscode.commands.executeCommand(commandId, ...args);
       },
     },
     pass: (message) => ({ status: 'pass', message }),

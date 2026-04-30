@@ -54,6 +54,10 @@ export class EventEmitter<T> {
   dispose() { this._listeners = []; }
 }
 
+export const commands = {
+  executeCommand: vi.fn().mockResolvedValue(undefined),
+};
+
 export const window = {
   createOutputChannel: vi.fn().mockReturnValue({
     appendLine: vi.fn(),
