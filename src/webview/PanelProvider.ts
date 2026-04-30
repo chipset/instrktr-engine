@@ -18,6 +18,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     private readonly _extensionUri: vscode.Uri,
     private readonly _runner: StepRunner,
     private readonly _auth: AuthManager,
+    private readonly _onSolutionViewed?: () => void,
   ) {
     _runner.onStateChange((state) => this._setState(state));
     _auth.onDidChangeState((authState) => this._setAuth(authState));
@@ -148,6 +149,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
             targetFile,
             `${rel}  (Your file ↔ Solution)`,
           );
+          this._onSolutionViewed?.();
           break;
         }
       }

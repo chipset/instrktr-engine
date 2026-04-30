@@ -52,6 +52,19 @@ export class ValidatorRunner {
     this._commandRunner = new SecureCommandRunner(permissions);
   }
 
+  async runSetup(
+    setupPath: string,
+    terminal: TerminalAPI,
+    stepIndex?: number,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<void> {
+    if (setupPath.endsWith('.sh')) {
+      return this._runBashSetup(setupPath, stepIndex ?? 0, courseId, stepId);
+    }
+    return this._runJsSetup(setupPath, terminal, courseId, stepId);
+  }
+
   async run(
     validatorPath: string,
     terminal: TerminalAPI,
@@ -140,6 +153,93 @@ export class ValidatorRunner {
     } catch (err) {
       return { status: 'fail', message: String(err) };
     }
+  }
+
+  private async _runBashSetup(
+    setupPath: string,
+    stepIndex: number,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<void> {
+    if (process.platform === 'win32') {
+      throw new Error('Bash setup scripts are not supported on Windows. Use a JS setup script (setup.js) instead.');
+    }
+
+    const courseDir = path.dirname(path.dirname(setupPath));
+    const resolvedScript = path.resolve(setupPath);
+    const resolvedCourseDir = path.resolve(courseDir);
+    if (!resolvedScript.startsWith(resolvedCourseDir + path.sep)) {
+      throw new Error('Setup script path is outside the course directory.');
+    }
+
+    const workspace = this._workspaceRoot.fsPath;
+    const shell = process.env['SHELL'] ?? 'bash';
+    const command = `${shell} "${setupPath}"`;
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Setup script timed out after 30 seconds.')), VALIDATOR_TIMEOUT_MS),
+    );
+
+    const run = (async () => {
+      const result = await this._commandRunner.run({
+        command,
+        cwd: courseDir,
+        source: 'bashSetup',
+        courseId,
+        stepId,
+        validatorPath: setupPath,
+        env: {
+          PATH: process.env['PATH'] ?? '/usr/local/bin:/usr/bin:/bin',
+          HOME: process.env['HOME'] ?? '',
+          LANG: process.env['LANG'] ?? '',
+          INSTRKTR_WORKSPACE: workspace,
+          INSTRKTR_STEP: String(stepIndex),
+        },
+      });
+      if (result.exitCode !== 0) {
+        const message = (result.stdout || result.stderr).trim() || 'Setup script failed.';
+        throw new Error(message);
+      }
+    })();
+
+    await Promise.race([run, timeout]);
+  }
+
+  private async _runJsSetup(
+    setupPath: string,
+    terminal: TerminalAPI,
+    courseId?: string,
+    stepId?: string,
+  ): Promise<void> {
+    let fn: (ctx: ReturnType<typeof buildContext>) => Promise<unknown>;
+    let runtime: SandboxRuntime;
+    try {
+      const courseDir = path.dirname(path.dirname(setupPath));
+      runtime = this._createSandboxRuntime(courseDir);
+      const mod = this._loadSandboxModule(path.resolve(setupPath), runtime);
+      fn = mod.exports as typeof fn;
+    } catch (err) {
+      throw new Error(`Could not load setup script: ${err}`);
+    }
+
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Setup script timed out after 30 seconds.')), VALIDATOR_TIMEOUT_MS),
+    );
+
+    const cwd = this._workspaceRoot.fsPath;
+    const scopedTerminal: TerminalAPI = {
+      lastCommand: () => terminal.lastCommand(),
+      outputContains: (text: string) => terminal.outputContains(text),
+      run: (command: string) => this._commandRunner.run({
+        command, cwd, source: 'terminal.run', courseId, stepId, validatorPath: setupPath,
+      }),
+      runShell: (command: string) => this._commandRunner.runShell({
+        command, cwd, source: 'terminal.runShell', courseId, stepId, validatorPath: setupPath,
+      }),
+    };
+
+    const ctx = buildContext(this._workspaceRoot, scopedTerminal);
+    await Promise.race([this._invokeSandboxSetup(fn, ctx, runtime), timeout]);
   }
 
   private async _runJs(
@@ -309,12 +409,8 @@ export class ValidatorRunner {
     return this._resolveModuleCandidate(modulePath, courseDir);
   }
 
-  private async _invokeSandboxValidator(
-    validatorFn: (ctx: ValidatorContext) => Promise<CheckResult>,
-    hostContext: ValidatorContext,
-    runtime: SandboxRuntime,
-  ): Promise<CheckResult> {
-    const bridge = (op: string, args: unknown[]): unknown => {
+  private _createContextBridge(hostContext: ValidatorContext): (op: string, args: unknown[]) => unknown {
+    return (op: string, args: unknown[]): unknown => {
       switch (op) {
         case 'files.exists':
           return hostContext.files.exists(this._expectStringArg(args, 0, op));
@@ -340,9 +436,59 @@ export class ValidatorRunner {
         case 'workspace.getConfig':
           return hostContext.workspace.getConfig(this._expectStringArg(args, 0, op));
         default:
-          throw new Error(`Unknown validator bridge operation: ${op}`);
+          throw new Error(`Unknown bridge operation: ${op}`);
       }
     };
+  }
+
+  private async _invokeSandboxSetup(
+    setupFn: (ctx: ValidatorContext) => Promise<unknown>,
+    hostContext: ValidatorContext,
+    runtime: SandboxRuntime,
+  ): Promise<void> {
+    const bridge = this._createContextBridge(hostContext);
+
+    const invoke = new vm.Script(
+      `(async function(__setup, __bridge) {
+        const bridgeAsync = (op) => (...args) => Promise.resolve(__bridge(op, args));
+        const ctx = {
+          files: {
+            exists: bridgeAsync('files.exists'),
+            read: bridgeAsync('files.read'),
+            matches: bridgeAsync('files.matches'),
+            list: bridgeAsync('files.list'),
+          },
+          terminal: {
+            lastCommand: bridgeAsync('terminal.lastCommand'),
+            outputContains: bridgeAsync('terminal.outputContains'),
+            run: bridgeAsync('terminal.run'),
+            runShell: bridgeAsync('terminal.runShell'),
+          },
+          env: {
+            get: (name) => __bridge('env.get', [name]),
+          },
+          workspace: {
+            getConfig: bridgeAsync('workspace.getConfig'),
+          },
+        };
+        await __setup(ctx);
+      })`,
+    );
+
+    const run = invoke.runInContext(runtime.context, { timeout: VALIDATOR_TIMEOUT_MS }) as (
+      setup: (ctx: ValidatorContext) => Promise<unknown>,
+      bridge: (op: string, args: unknown[]) => unknown,
+    ) => Promise<void>;
+
+    await run(setupFn, bridge);
+  }
+
+  private async _invokeSandboxValidator(
+    validatorFn: (ctx: ValidatorContext) => Promise<CheckResult>,
+    hostContext: ValidatorContext,
+    runtime: SandboxRuntime,
+  ): Promise<CheckResult> {
+    const bridge = this._createContextBridge(hostContext);
 
     const invoke = new vm.Script(
       `(async function(__validator, __bridge) {

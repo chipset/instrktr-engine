@@ -21,6 +21,7 @@ export interface StepDef {
   title: string;
   instructions: string; // markdown text
   hints: string[];
+  setup?: string;       // path to setup.js or setup.sh — runs before the step becomes active
   validator?: string;   // path to validate.js
   starter?: string;     // path to starter folder
   solution?: string;    // path to solution folder (hidden from learner, shown on fail/warn)

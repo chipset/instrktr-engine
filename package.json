@@ -169,6 +169,12 @@
           "default": false,
           "scope": "application",
           "markdownDescription": "Disable validator command permission prompts and run validator commands without asking. **Only enable this for courses you fully trust.**"
+        },
+        "instrktr.webhookUrl": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "URL to POST learner progress events to (e.g. `http://localhost:3737/webhook`). Used by instructors running the Instrktr Dashboard to monitor class progress in real time. Leave blank to disable."
         }
       }
     }

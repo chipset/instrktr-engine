@@ -29,6 +29,8 @@ export class StepRunner {
   readonly onStateChange = this._onStateChange.event;
   private _onStepPass = new vscode.EventEmitter<void>();
   readonly onStepPass = this._onStepPass.event;
+  private _onCheckFailed = new vscode.EventEmitter<CheckResult>();
+  readonly onCheckFailed = this._onCheckFailed.event;
 
   private _terminal!: TerminalAPI;
   private _validatorRunner: ValidatorRunner;
@@ -167,6 +169,8 @@ export class StepRunner {
         this._completedSteps.push(this._stepIndex);
       }
       this._onStepPass.fire();
+    } else if (result.status === 'fail') {
+      this._onCheckFailed.fire(result);
     }
 
     return result;
@@ -258,11 +262,25 @@ export class StepRunner {
     return resolved;
   }
 
+  getEventContext(): {
+    course: { id: string; title: string; version: string };
+    step: { id: string; title: string; index: number; total: number };
+  } | null {
+    if (!this._course) { return null; }
+    const step = this._currentStep();
+    if (!step) { return null; }
+    return {
+      course: { id: this._course.id, title: this._course.title, version: this._course.version },
+      step: { id: step.id, title: step.title, index: this._stepIndex, total: this._course.steps.length },
+    };
+  }
+
   dispose() {
     this._fileWatcher.dispose();
     this._courseWatcher?.dispose();
     this._onStateChange.dispose();
     this._onStepPass.dispose();
+    this._onCheckFailed.dispose();
   }
 
   private _currentStep(): StepDef | undefined {
@@ -279,6 +297,15 @@ export class StepRunner {
         await this._scaffolder.scaffold(starterDir);
       } catch {
         // starter dir is optional or path traversal attempt — skip silently
+      }
+    }
+
+    if (step.setup) {
+      try {
+        const setupPath = this._safeCourseJoin(this._courseDir, step.setup);
+        await this._validatorRunner.runSetup(setupPath, this._terminal, this._stepIndex, this._course?.id, step.id);
+      } catch (err) {
+        vscode.window.showWarningMessage(`Instrktr: Step setup failed — ${err}`);
       }
     }
 

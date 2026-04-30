@@ -19,6 +19,7 @@ import {
 } from './engine/WorkspaceLaunchResolver';
 import { resolveBundledDefaultCourse, resolveCourseDirectory } from './engine/CoursePathResolver';
 import { VSCodeCommandPermissionService } from './security/CommandPermissionService';
+import { WebhookClient } from './webhook/WebhookClient';
 
 const PENDING_LAUNCH_KEY = 'pendingCourseLaunch';
 const WORKSPACE_BINDINGS_KEY = 'courseWorkspaceBindings';
@@ -35,6 +36,24 @@ export async function activate(context: vscode.ExtensionContext) {
   const workspaces = new CourseWorkspaceManager(context.globalStorageUri);
   const commandPermissions = new VSCodeCommandPermissionService(context.globalState);
   const runner = new StepRunner(workspaceRoot, progressStore, workspaces, commandPermissions);
+  const webhook = new WebhookClient();
+  function sendWebhook(
+    event: Parameters<WebhookClient['send']>[1]['event'],
+    result?: { status: string; message: string },
+  ) {
+    const url = vscode.workspace.getConfiguration('instrktr').get<string>('webhookUrl', '').trim();
+    if (!url) { return; }
+    const ctx = runner.getEventContext();
+    if (!ctx) { return; }
+    webhook.send(url, {
+      event,
+      timestamp: new Date().toISOString(),
+      user: { login: auth.state.username ?? null },
+      course: ctx.course,
+      step: ctx.step,
+      result,
+    });
+  }
   context.subscriptions.push(auth);
   const terminalWatcher = new TerminalWatcher(workspaceRoot, commandPermissions);
   const registry = new RegistryFetcher(context.globalStorageUri);
@@ -94,6 +113,11 @@ export async function activate(context: vscode.ExtensionContext) {
   runner.onStepPass(() => {
     const token = auth.accessToken;
     if (token) { gistSync.debouncedPush(token, progressStore.all()); }
+    sendWebhook('step.pass');
+  });
+
+  runner.onCheckFailed((result) => {
+    sendWebhook('step.check.failed', result);
   });
 
   async function ensureWorkspaceRoot(): Promise<vscode.Uri> {
@@ -255,7 +279,12 @@ export async function activate(context: vscode.ExtensionContext) {
     uninstallCourse,
   );
 
-  const panelProvider = new PanelProvider(context.extensionUri, runner, auth);
+  const panelProvider = new PanelProvider(
+    context.extensionUri,
+    runner,
+    auth,
+    () => sendWebhook('step.solution.viewed'),
+  );
 
   function isPresentationMode(): boolean {
     return vscode.workspace

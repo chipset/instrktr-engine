@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.3.11] — 2026-04-29
+
 ### Added
 - **Copy** button on fenced code blocks in the Active Course instructions panel — copies the block text to the clipboard (with a fallback when the Clipboard API is unavailable).
 - **Syntax highlighting** for fenced code in step instructions (highlight.js + language tags on fences).
