@@ -299,9 +299,12 @@ export class ValidatorRunner {
   }
 
   private _createSandboxRuntime(courseDir: string): SandboxRuntime {
+    const context = vm.createContext(Object.create(null));
+    context.setTimeout = setTimeout;
+    context.clearTimeout = clearTimeout;
     return {
       cache: new Map<string, SandboxModule>(),
-      context: vm.createContext(Object.create(null)),
+      context,
       courseDir: path.resolve(courseDir),
     };
   }
