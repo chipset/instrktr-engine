@@ -11,7 +11,8 @@ The Instrktr is a runtime that loads interactive courses into your editor. Each 
 - **Starter files** scaffolded automatically when a step begins
 - **Hints** available on demand
 - **Open-file links** that jump straight to the file you need to edit
-- **Compare with Solution** diff view shown when a check fails
+- **Compare with Solution** diff view shown when a check fails or warns
+- **Step navigation** from the panel, command palette, keyboard shortcuts, and status bar
 
 Your progress is saved locally and synced across devices via GitHub Gist (optional, requires sign-in).
 
@@ -24,7 +25,7 @@ Your progress is saved locally and synced across devices via GitHub Gist (option
 
 ## Installing courses
 
-Click **Browse Courses** in the Instrktr panel to open the catalog. Install any course with one click — it downloads automatically from GitHub. If `git` is on your PATH, Instrktr uses `git clone` for a faster download; otherwise it falls back to a ZIP download.
+Click **Browse Courses** in the Instrktr panel to open the catalog. Install any course with one click — it downloads automatically from GitHub. Installed courses can be started, updated, or removed from the catalog. If `git` is on your PATH, Instrktr uses `git clone` for a faster download; otherwise it falls back to a ZIP download.
 
 To run a course you're authoring locally, use the command palette:
 
@@ -50,6 +51,7 @@ course-my-topic/
     │   ├── instructions.md
     │   ├── starter/        ← files copied into workspace on step entry
     │   ├── solution/       ← shown as diff when a check fails (optional)
+    │   ├── setup.js        ← runs before the step becomes active (optional)
     │   └── validate.js     ← checks learner's work
     └── 02-second-step/
         └── ...
@@ -121,6 +123,14 @@ exit 0   # pass
 
 See the [Validator API reference](docs/validator-api.md) and [Course Authoring Guide](docs/course-authoring.md) for full details and patterns.
 
+### Step setup scripts
+
+Steps can include an optional `setup` script that runs before the step becomes active. Use setup scripts for preparation that should happen on step entry, and validators for checks that run when the learner clicks **Check My Work**.
+
+```json
+{ "setup": "steps/01-first-step/setup.js" }
+```
+
 ## Scaffold a new course
 
 ```
@@ -141,6 +151,9 @@ Sign in with GitHub (**Instrktr: Sign in with GitHub**) to sync your progress ac
 | `instrktr.startupCourse` | Course ID to auto-install and start on VS Code open |
 | `instrktr.localCoursePath` | Absolute or `${workspaceFolder}`-relative path to a local course folder (opens in dev watch mode) |
 | `instrktr.presentationMode` | Optimize the panel for live presentations by hiding sync controls, hints, solution comparison, and validator checks |
+| `instrktr.debugValidatorCommands` | Log validator command execution and permission decisions to the Instrktr output channel |
+| `instrktr.disableValidatorCommandSecurityChecks` | Disable validator command permission prompts for trusted courses |
+| `instrktr.webhookUrl` | POST learner progress events to an instructor dashboard or compatible webhook endpoint |
 
 See the [Configuration Reference](docs/configuration.md) for full details, scope rules, workshop setup, and monorepo patterns.
 
@@ -148,12 +161,29 @@ See the [Configuration Reference](docs/configuration.md) for full details, scope
 
 | Command | Description |
 |---|---|
+| `Instrktr: Start Course` | Pick from the catalog, a local folder, or installed courses |
 | `Instrktr: Browse Courses` | Open the course catalog |
 | `Instrktr: Open Local Course Folder` | Load a local course (dev mode) |
 | `Instrktr: Refresh Course Catalog` | Force-refresh the registry |
+| `Instrktr: Check My Work` | Run the active step's validator |
+| `Instrktr: Next Step` | Move to the next step |
+| `Instrktr: Previous Step` | Move to the previous step |
+| `Instrktr: Jump to Step…` | Open a picker for any step in the active course |
 | `Instrktr: Restart Course` | Reset progress for the active course |
 | `Instrktr: Sign in with GitHub` | Enable cross-device sync |
 | `Instrktr: Sign out of GitHub` | Disconnect GitHub account |
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Cmd+Shift+Enter` / `Ctrl+Shift+Enter` | Check my work |
+| `Cmd+Shift+]` / `Ctrl+Shift+]` | Next step |
+| `Cmd+Shift+[` / `Ctrl+Shift+[` | Previous step |
+
+## Instructor dashboard
+
+Set `instrktr.webhookUrl` to send step pass, failed check, and solution-view events to an instructor dashboard or compatible webhook receiver.
 
 ## Requirements
 
