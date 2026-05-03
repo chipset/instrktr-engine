@@ -212,3 +212,109 @@ describe('StepRunner course switching', () => {
   });
 
 });
+
+describe('StepRunner.nextStep()', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function makeProgress() {
+    return {
+      start: vi.fn(),
+      setCurrentStep: vi.fn(),
+      markStepComplete: vi.fn(),
+      reset: vi.fn(),
+    };
+  }
+
+  function makeTwoStepCourse(): CourseDef {
+    return {
+      id: 'test-course',
+      title: 'Test Course',
+      version: '1.0.0',
+      engineVersion: '>=0.0.0',
+      steps: [
+        { id: 'step-1', title: 'Step 1', instructions: 'step-1.md', hints: [], validator: 'validate-1.js' },
+        { id: 'step-2', title: 'Step 2', instructions: 'step-2.md', hints: [], validator: 'validate-2.js' },
+      ],
+    };
+  }
+
+  it('does not mark the course complete when required validator steps are incomplete', async () => {
+    const progress = makeProgress();
+    const runner = new StepRunner(Uri.file('/workspace') as never, progress as never, makeWorkspaceManager());
+    const states: StepState[] = [];
+    runner.onStateChange((state) => states.push(state));
+
+    const internal = runner as unknown as {
+      _course: CourseDef;
+      _stepIndex: number;
+      _completedSteps: number[];
+    };
+    internal._course = makeTwoStepCourse();
+    internal._stepIndex = 1;
+    internal._completedSteps = [0];
+
+    const advanced = await runner.nextStep();
+
+    expect(advanced).toBe(false);
+    expect(states).toHaveLength(0);
+  });
+
+  it('marks the course complete on the last step after required validator steps are complete', async () => {
+    const progress = makeProgress();
+    const runner = new StepRunner(Uri.file('/workspace') as never, progress as never, makeWorkspaceManager());
+    const states: StepState[] = [];
+    runner.onStateChange((state) => states.push(state));
+
+    const internal = runner as unknown as {
+      _course: CourseDef;
+      _stepIndex: number;
+      _completedSteps: number[];
+    };
+    internal._course = makeTwoStepCourse();
+    internal._stepIndex = 1;
+    internal._completedSteps = [0, 1];
+
+    const advanced = await runner.nextStep();
+
+    expect(advanced).toBe(false);
+    expect(states).toHaveLength(1);
+    expect(states[0]).toMatchObject({
+      loaded: true,
+      courseComplete: true,
+      courseTitle: 'Test Course',
+      stepIndex: 1,
+      totalSteps: 2,
+      completedSteps: [0, 1],
+    });
+  });
+
+  it('records validator-free steps as complete when advancing past them', async () => {
+    const progress = makeProgress();
+    const runner = new StepRunner(Uri.file('/workspace') as never, progress as never, makeWorkspaceManager());
+    const internal = runner as unknown as {
+      _course: CourseDef;
+      _stepIndex: number;
+      _completedSteps: number[];
+      _enterStep: () => Promise<void>;
+    };
+    internal._course = {
+      ...makeTwoStepCourse(),
+      steps: [
+        { id: 'step-1', title: 'Step 1', instructions: 'step-1.md', hints: [] },
+        { id: 'step-2', title: 'Step 2', instructions: 'step-2.md', hints: [], validator: 'validate-2.js' },
+      ],
+    };
+    internal._stepIndex = 0;
+    internal._completedSteps = [];
+    internal._enterStep = vi.fn().mockResolvedValue(undefined);
+
+    const advanced = await runner.nextStep();
+
+    expect(advanced).toBe(true);
+    expect(progress.markStepComplete).toHaveBeenCalledWith('test-course', 0);
+    expect(progress.setCurrentStep).toHaveBeenCalledWith('test-course', 1);
+    expect(internal._completedSteps).toEqual([0]);
+  });
+});

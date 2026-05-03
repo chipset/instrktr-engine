@@ -5,6 +5,7 @@ import { InstalledCourses } from '../github/InstalledCourses';
 import { RegistryCourse } from '../engine/types';
 
 export type CatalogMessage =
+  | { command: 'ready' }
   | { command: 'refresh' }
   | { command: 'install'; courseId: string }
   | { command: 'start'; courseId: string }
@@ -34,6 +35,9 @@ export class CatalogProvider implements vscode.WebviewViewProvider {
 
     view.webview.onDidReceiveMessage(async (msg: CatalogMessage) => {
       switch (msg.command) {
+        case 'ready':
+          await this._sendCatalog(false);
+          break;
         case 'refresh':
           await this._sendCatalog(true);
           break;
@@ -57,8 +61,6 @@ export class CatalogProvider implements vscode.WebviewViewProvider {
     view.onDidChangeVisibility(() => {
       if (view.visible) { this._sendCatalog(false); }
     });
-
-    this._sendCatalog(false);
   }
 
   /** Called externally after an install completes to refresh badges. */

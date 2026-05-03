@@ -164,10 +164,7 @@ export class StepRunner {
     );
 
     if (result.status === 'pass') {
-      await this._progress.markStepComplete(this._course.id, this._stepIndex);
-      if (!this._completedSteps.includes(this._stepIndex)) {
-        this._completedSteps.push(this._stepIndex);
-      }
+      await this._markStepComplete(this._stepIndex);
       this._onStepPass.fire();
     } else if (result.status === 'fail') {
       this._onCheckFailed.fire(result);
@@ -178,7 +175,10 @@ export class StepRunner {
 
   async nextStep(): Promise<boolean> {
     if (!this._course || this._navigating) { return false; }
+    await this._recordImplicitCompletion(this._stepIndex);
+
     if (this._stepIndex >= this._course.steps.length - 1) {
+      if (!this._isCourseComplete()) { return false; }
       // Fire completion state
       this._onStateChange.fire({
         loaded: true,
@@ -285,6 +285,27 @@ export class StepRunner {
 
   private _currentStep(): StepDef | undefined {
     return this._course?.steps[this._stepIndex];
+  }
+
+  private async _markStepComplete(stepIndex: number): Promise<void> {
+    if (!this._course) { return; }
+    await this._progress.markStepComplete(this._course.id, stepIndex);
+    if (!this._completedSteps.includes(stepIndex)) {
+      this._completedSteps.push(stepIndex);
+    }
+  }
+
+  private async _recordImplicitCompletion(stepIndex: number): Promise<void> {
+    const step = this._course?.steps[stepIndex];
+    if (!step || step.validator) { return; }
+    await this._markStepComplete(stepIndex);
+  }
+
+  private _isCourseComplete(): boolean {
+    if (!this._course) { return false; }
+    return this._course.steps.every((step, index) => (
+      !step.validator || this._completedSteps.includes(index)
+    ));
   }
 
   private async _enterStep(loadGeneration = this._loadGeneration) {
