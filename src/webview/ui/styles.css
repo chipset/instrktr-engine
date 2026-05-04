@@ -28,14 +28,18 @@ body {
   font-size: var(--vscode-font-size);
   color: var(--vscode-foreground);
   background: var(--vscode-sideBar-background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel {
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px;
-  min-height: 100vh;
+  min-height: 0;
 }
 
 /* Header */

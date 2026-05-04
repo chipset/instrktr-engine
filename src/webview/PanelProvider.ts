@@ -33,7 +33,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = this._getHtml(webviewView.webview);
-    this._updateWebviewLocalRoots(webviewView.webview, this._runner.getCourseDirectory());
+    this._updateWebviewOptions(webviewView.webview, this._runner.getCourseDirectory());
 
     webviewView.onDidChangeVisibility(() => {
       if (!webviewView.visible) { return; }
@@ -159,9 +159,6 @@ export class PanelProvider implements vscode.WebviewViewProvider {
   private _setState(state: StepState) {
     const webview = this._view?.webview;
     const courseDir = this._runner.getCourseDirectory();
-    if (webview) {
-      this._updateWebviewLocalRoots(webview, courseDir);
-    }
     let outgoing: StepState = state;
     if (
       webview &&
@@ -174,16 +171,27 @@ export class PanelProvider implements vscode.WebviewViewProvider {
         instructionsHtml: rewriteInstructionImages(state.instructionsHtml, courseDir, webview),
       };
     }
+    if (webview) {
+      this._updateWebviewOptions(
+        webview,
+        courseDir,
+        outgoing.loaded && 'instructionsHtml' in outgoing ? outgoing.instructionsHtml : undefined,
+      );
+    }
     this._lastState = outgoing;
     this._view?.webview.postMessage({ command: 'setState', state: outgoing });
   }
 
-  private _updateWebviewLocalRoots(webview: vscode.Webview, courseDir?: string) {
+  private _updateWebviewOptions(webview: vscode.Webview, courseDir?: string, instructionsHtml?: string) {
     const uiBase = vscode.Uri.joinPath(this._extensionUri, 'src', 'webview', 'ui');
     const roots = courseDir
       ? [uiBase, vscode.Uri.file(courseDir)]
       : [uiBase];
-    webview.options = { enableScripts: true, localResourceRoots: roots };
+    webview.options = {
+      enableScripts: true,
+      localResourceRoots: roots,
+      enableCommandUris: instructionsHtml ? extractCommandUrisFromInstructions(instructionsHtml) : [],
+    };
   }
 
   private _setAuth(auth: AuthState) {
@@ -282,6 +290,19 @@ export class PanelProvider implements vscode.WebviewViewProvider {
 </body>
 </html>`;
   }
+}
+
+export function extractCommandUrisFromInstructions(instructionsHtml: string): readonly string[] {
+  const commands = new Set<string>();
+  const hrefPattern = /\bhref\s*=\s*(["'])command:([^"']+)\1/gi;
+  let match: RegExpExecArray | null;
+  while ((match = hrefPattern.exec(instructionsHtml)) !== null) {
+    const command = match[2].split(/[?#]/, 1)[0].trim();
+    if (/^[A-Za-z0-9_.-]+$/.test(command)) {
+      commands.add(command);
+    }
+  }
+  return [...commands];
 }
 
 async function listFilesRecursive(dir: vscode.Uri): Promise<vscode.Uri[]> {
