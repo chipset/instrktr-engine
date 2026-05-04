@@ -229,10 +229,18 @@ instructions.addEventListener('click', (e) => {
     return;
   }
   const link = e.target.closest('a[href^="open:"]');
-  if (!link) { return; }
-  e.preventDefault();
-  const filePath = link.getAttribute('href').slice('open:'.length);
-  vscode.postMessage({ command: 'openFile', path: filePath });
+  if (link) {
+    e.preventDefault();
+    const filePath = link.getAttribute('href').slice('open:'.length);
+    vscode.postMessage({ command: 'openFile', path: filePath });
+    return;
+  }
+  const cmdLink = e.target.closest('a[href^="command:"]');
+  if (cmdLink) {
+    e.preventDefault();
+    const commandId = cmdLink.getAttribute('href').slice('command:'.length);
+    vscode.postMessage({ command: 'runCommand', commandId });
+  }
 });
 
 // Step dot click-to-jump
