@@ -299,9 +299,18 @@ export class ValidatorRunner {
   }
 
   private _createSandboxRuntime(courseDir: string): SandboxRuntime {
-    const context = vm.createContext(Object.create(null));
-    context.setTimeout = setTimeout;
-    context.clearTimeout = clearTimeout;
+    // Timer globals must be present on the sandbox object *before* vm.createContext()
+    // is called. Properties added after contextification are not reliably visible to
+    // async continuations inside the vm context (a known V8/Node.js vm behaviour),
+    // which causes "ReferenceError: setTimeout is not defined" in validators that
+    // use setTimeout inside async functions or Promise callbacks.
+    const sandbox = Object.assign(Object.create(null), {
+      setTimeout,
+      clearTimeout,
+      setInterval,
+      clearInterval,
+    });
+    const context = vm.createContext(sandbox);
     return {
       cache: new Map<string, SandboxModule>(),
       context,
