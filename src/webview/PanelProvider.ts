@@ -181,7 +181,7 @@ export class PanelProvider implements vscode.WebviewViewProvider {
     const roots = courseDir
       ? [uiBase, vscode.Uri.file(courseDir)]
       : [uiBase];
-    webview.options = { enableScripts: true, localResourceRoots: roots };
+    webview.options = { enableScripts: true, enableCommandUris: true, localResourceRoots: roots };
   }
 
   private _setAuth(auth: AuthState) {
