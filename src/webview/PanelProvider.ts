@@ -120,6 +120,13 @@ export class PanelProvider implements vscode.WebviewViewProvider {
           break;
         }
 
+        case 'runCommand': {
+          if (typeof message.commandId !== 'string') { break; }
+          if (!/^[a-zA-Z0-9._-]+$/.test(message.commandId)) { break; }
+          vscode.commands.executeCommand(message.commandId);
+          break;
+        }
+
         case 'openSolution': {
           if (this._presentationMode) { break; }
           const solutionDir = this._runner.currentStepSolutionDir();

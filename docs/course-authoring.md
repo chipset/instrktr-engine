@@ -63,7 +63,7 @@ course-my-topic/
 
 ## Writing Instructions
 
-Instructions are standard Markdown. Two special link syntaxes are supported:
+Instructions are standard Markdown. Three special link syntaxes are supported:
 
 ### Open-file links
 
@@ -74,6 +74,18 @@ Edit [app.py](open:app.py) to add the route.
 ```
 
 The path is relative to the workspace root. These render as styled file chips in the panel — clicking one opens the file directly in the VS Code editor.
+
+### Command links
+
+Use `command:` links to trigger any VS Code command from a clickable tag in the instructions. This is useful for directing learners to open a specific extension view, run a tool, or navigate to a panel they need for the step.
+
+```markdown
+Open the [@command:e4e.endevorPackages.focus](command:e4e.endevorPackages.focus) view, then expand the tree to find your package.
+```
+
+The command ID must contain only letters, numbers, dots, hyphens, and underscores — the same characters used in VS Code extension command identifiers. These render as `@`-prefixed tags in the panel; clicking one executes the command in the learner's VS Code instance.
+
+> **Finding command IDs.** Open the Command Palette (`F1`), search for the command, right-click the entry, and choose **Copy Command ID**.
 
 ### Regular links
 
